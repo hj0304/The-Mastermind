@@ -5,8 +5,4 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: './',
-  build: {
-    // dist 비우기는 scripts/clean-dist.mjs가 담당 (이 PC의 Node fs.rm 크래시 우회)
-    emptyOutDir: false,
-  },
 });
