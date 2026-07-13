@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { GAMES } from './games/registry.ts';
 import type { GameMeta } from './games/registry.ts';
+import MonochromeGame from './games/monochrome/MonochromeGame.tsx';
 import './App.css';
 
 const STATUS_LABEL: Record<GameMeta['status'], string> = {
@@ -8,10 +10,14 @@ const STATUS_LABEL: Record<GameMeta['status'], string> = {
   planned: 'COMING SOON',
 };
 
-function GameCard({ game }: { game: GameMeta }) {
+function GameCard({ game, onPlay }: { game: GameMeta; onPlay: (id: string) => void }) {
   const locked = game.status === 'planned';
   return (
-    <button className={`game-card ${locked ? 'locked' : ''}`} disabled={locked}>
+    <button
+      className={`game-card ${locked ? 'locked' : ''}`}
+      disabled={locked}
+      onClick={() => onPlay(game.id)}
+    >
       <div className="game-card-head">
         <h3>{game.name}</h3>
         <span className={`badge badge-${game.status}`}>{STATUS_LABEL[game.status]}</span>
@@ -27,6 +33,12 @@ function GameCard({ game }: { game: GameMeta }) {
 }
 
 export default function App() {
+  const [activeGame, setActiveGame] = useState<string | null>(null);
+
+  if (activeGame === 'monochrome') {
+    return <MonochromeGame onExit={() => setActiveGame(null)} />;
+  }
+
   return (
     <div className="lobby">
       <header className="lobby-header">
@@ -35,7 +47,7 @@ export default function App() {
       </header>
       <main className="game-grid">
         {GAMES.map((g) => (
-          <GameCard key={g.id} game={g} />
+          <GameCard key={g.id} game={g} onPlay={setActiveGame} />
         ))}
       </main>
       <footer className="lobby-footer">
