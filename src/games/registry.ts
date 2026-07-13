@@ -43,7 +43,7 @@ export const GAMES: GameMeta[] = [
     name: '블라인드 포커',
     tagline: '내 카드만 못 보는 포커 — 상대의 베팅을 읽어라',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'planned',
+    status: 'wip',
     origin: '클래식 카드게임 인디언 포커(Blind man\'s bluff)',
   },
   {
