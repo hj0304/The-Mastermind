@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { GAMES } from './games/registry.ts';
 import type { GameMeta } from './games/registry.ts';
 import MonochromeGame from './games/monochrome/MonochromeGame.tsx';
+import BlindPokerGame from './games/blind-poker/BlindPokerGame.tsx';
 import './App.css';
 
 const STATUS_LABEL: Record<GameMeta['status'], string> = {
@@ -37,6 +38,9 @@ export default function App() {
 
   if (activeGame === 'monochrome') {
     return <MonochromeGame onExit={() => setActiveGame(null)} />;
+  }
+  if (activeGame === 'blind-poker') {
+    return <BlindPokerGame onExit={() => setActiveGame(null)} />;
   }
 
   return (
