@@ -5,6 +5,7 @@ import MonochromeGame from './games/monochrome/MonochromeGame.tsx';
 import BlindPokerGame from './games/blind-poker/BlindPokerGame.tsx';
 import JungleJanggiGame from './games/jungle-janggi/JungleJanggiGame.tsx';
 import NumberJanggiGame from './games/number-janggi/NumberJanggiGame.tsx';
+import QuattroGame from './games/quattro/QuattroGame.tsx';
 import { getRecord } from './stats.ts';
 import './App.css';
 
@@ -56,6 +57,9 @@ export default function App() {
   }
   if (activeGame === 'number-janggi') {
     return <NumberJanggiGame onExit={() => setActiveGame(null)} />;
+  }
+  if (activeGame === 'quattro') {
+    return <QuattroGame onExit={() => setActiveGame(null)} />;
   }
 
   return (
