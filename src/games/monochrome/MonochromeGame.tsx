@@ -1,18 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MonoState, PlayerId } from './engine.ts';
 import { createGame, currentPlayer, isTerminal, play, tileColor, winner } from './engine.ts';
-import type { Difficulty } from './ai.ts';
-import { chooseAiMove, recordGameEnd, recordHumanPlay } from './ai.ts';
+import { chooseAiMove, loadTendency, recordGameEnd, recordHumanPlay } from './ai.ts';
+import { getRecord, recordResult } from '../../stats.ts';
 import './monochrome.css';
 
 const HUMAN: PlayerId = 0;
 const AI: PlayerId = 1;
 
-const DIFF_LABEL: Record<Difficulty, string> = {
-  easy: '쉬움',
-  normal: '보통',
-  hard: '극한',
-};
+/** 솔로 플레이는 단일 EXTREME 난이도 */
+const DIFFICULTY = 'hard' as const;
 
 interface Props {
   onExit: () => void;
@@ -22,7 +19,6 @@ type Phase = 'setup' | 'playing' | 'done';
 
 export default function MonochromeGame({ onExit }: Props) {
   const [phase, setPhase] = useState<Phase>('setup');
-  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [state, setState] = useState<MonoState | null>(null);
   const [aiThinking, setAiThinking] = useState(false);
   const [lastResultFlash, setLastResultFlash] = useState<string | null>(null);
@@ -45,7 +41,7 @@ export default function MonochromeGame({ onExit }: Props) {
     const timer = setTimeout(() => {
       setState((s) => {
         if (!s || isTerminal(s) || currentPlayer(s) !== AI) return s;
-        const move = chooseAiMove(s, { difficulty, me: AI });
+        const move = chooseAiMove(s, { difficulty: DIFFICULTY, me: AI });
         const next = play(s, move);
         flashResult(s, next);
         return next;
@@ -53,7 +49,7 @@ export default function MonochromeGame({ onExit }: Props) {
       setAiThinking(false);
     }, delay);
     return () => clearTimeout(timer);
-  }, [phase, state, difficulty]);
+  }, [phase, state]);
 
   // 종료 감지
   useEffect(() => {
@@ -61,6 +57,7 @@ export default function MonochromeGame({ onExit }: Props) {
       if (!gameEndRecorded.current) {
         gameEndRecorded.current = true;
         recordGameEnd();
+        recordResult('monochrome', winner(state) === HUMAN);
       }
       const timer = setTimeout(() => setPhase('done'), 900);
       return () => clearTimeout(timer);
@@ -89,6 +86,8 @@ export default function MonochromeGame({ onExit }: Props) {
   // ---------- 렌더 ----------
 
   if (phase === 'setup') {
+    const rec = getRecord('monochrome');
+    const memory = loadTendency().games;
     return (
       <div className="mono-root">
         <GameHeader onExit={onExit} />
@@ -99,17 +98,14 @@ export default function MonochromeGame({ onExit }: Props) {
             높은 숫자가 승점 1점, 승자가 다음 선. 9라운드 후 승점이 높으면 승리 — 숫자는 끝까지
             공개되지 않습니다.
           </p>
-          <div className="mono-diff-select">
-            {(Object.keys(DIFF_LABEL) as Difficulty[]).map((d) => (
-              <button
-                key={d}
-                className={`diff-btn ${difficulty === d ? 'active' : ''}`}
-                onClick={() => setDifficulty(d)}
-              >
-                {DIFF_LABEL[d]}
-                {d === 'hard' && <span className="diff-note">패턴 학습 AI</span>}
-              </button>
-            ))}
+          <div className="setup-stats">
+            <span className="extreme-tag">EXTREME AI</span>
+            <span className="record-line">
+              통산 전적 <b>{rec.wins}승 {rec.losses}패</b>
+            </span>
+            {memory > 0 && (
+              <span className="memory-line">AI가 당신과의 대국 {memory}판을 기억하고 있습니다</span>
+            )}
           </div>
           <button className="primary-btn" onClick={startGame}>
             대전 시작
@@ -138,7 +134,7 @@ export default function MonochromeGame({ onExit }: Props) {
           라운드 {roundNo}/9
         </div>
         <div className="score ai">
-          <b>{state.scores[AI]}</b> AI ({DIFF_LABEL[difficulty]})
+          <b>{state.scores[AI]}</b> AI (EXTREME)
         </div>
       </div>
 

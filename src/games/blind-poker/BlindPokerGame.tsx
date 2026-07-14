@@ -9,24 +9,20 @@ import {
   potSize,
   seenCards,
 } from './engine.ts';
-import type { Difficulty } from './ai.ts';
-import { chooseAiAction, recordGameEnd, recordHandObservations } from './ai.ts';
+import { chooseAiAction, loadOpponentModel, recordGameEnd, recordHandObservations } from './ai.ts';
+import { getRecord, recordResult } from '../../stats.ts';
 import './blindpoker.css';
 
 const HUMAN: PlayerId = 0;
 const AI: PlayerId = 1;
 
-const DIFF_LABEL: Record<Difficulty, string> = {
-  easy: '쉬움',
-  normal: '보통',
-  hard: '극한',
-};
+/** 솔로 플레이는 단일 EXTREME 난이도 */
+const DIFFICULTY = 'hard' as const;
 
 type Phase = 'setup' | 'playing' | 'done';
 
 export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<Phase>('setup');
-  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [state, setState] = useState<BpState | null>(null);
   const [aiThinking, setAiThinking] = useState(false);
   const recordedHands = useRef(0);
@@ -47,12 +43,12 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
     const timer = setTimeout(() => {
       setState((s) => {
         if (!s || s.phase !== 'betting' || s.toAct !== AI) return s;
-        return act(s, chooseAiAction(s, { difficulty, me: AI }));
+        return act(s, chooseAiAction(s, { difficulty: DIFFICULTY, me: AI }));
       });
       setAiThinking(false);
     }, 700 + Math.random() * 800);
     return () => clearTimeout(timer);
-  }, [phase, state, difficulty]);
+  }, [phase, state]);
 
   // 핸드 종료 시 상대 성향 학습 기록 + 게임 종료 감지
   useEffect(() => {
@@ -68,6 +64,7 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
     if (state.phase === 'gameover' && !gameRecorded.current) {
       gameRecorded.current = true;
       recordGameEnd();
+      recordResult('blind-poker', gameWinner(state) === HUMAN);
       setPhase('done');
     }
   }, [state]);
@@ -94,17 +91,16 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
             가져갑니다. <b>10을 들고 폴드하면 칩 10개 페널티!</b> 상대의 칩을 모두 빼앗으면
             승리합니다.
           </p>
-          <div className="bp-diff-select">
-            {(Object.keys(DIFF_LABEL) as Difficulty[]).map((d) => (
-              <button
-                key={d}
-                className={`diff-btn ${difficulty === d ? 'active' : ''}`}
-                onClick={() => setDifficulty(d)}
-              >
-                {DIFF_LABEL[d]}
-                {d === 'hard' && <span className="diff-note">당신의 베팅을 읽는 AI</span>}
-              </button>
-            ))}
+          <div className="setup-stats">
+            <span className="extreme-tag">EXTREME AI</span>
+            <span className="record-line">
+              통산 전적 <b>{getRecord('blind-poker').wins}승 {getRecord('blind-poker').losses}패</b>
+            </span>
+            {loadOpponentModel().games > 0 && (
+              <span className="memory-line">
+                AI가 당신과의 대국 {loadOpponentModel().games}판의 베팅 패턴을 기억하고 있습니다
+              </span>
+            )}
           </div>
           <button className="primary-btn" onClick={startGame}>
             대전 시작
@@ -138,7 +134,7 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
           {state.carried > 0 && <div className="carried">이월 {state.carried}</div>}
         </div>
         <div className="stack ai">
-          AI ({DIFF_LABEL[difficulty]}) <b>{state.stacks[AI]}</b>칩
+          AI (EXTREME) <b>{state.stacks[AI]}</b>칩
         </div>
       </div>
 
