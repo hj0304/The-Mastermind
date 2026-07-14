@@ -75,7 +75,7 @@ export const GAMES: GameMeta[] = [
     name: '모노크롬',
     tagline: '0~8 아홉 장, 보이는 건 흑백뿐 — 아홉 번의 수읽기',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'wip',
+    status: 'playable',
     origin: '다빈치 코드 모티브의 블라인드 수싸움',
   },
   {
