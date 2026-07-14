@@ -35,7 +35,7 @@ export const GAMES: GameMeta[] = [
     name: '콰트로',
     tagline: '색도 숫자도 겹치지 않는 4장을, 상대보다 높게 완성하라',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'planned',
+    status: 'playable',
     origin: '바둑이 포커 변형 카드게임',
   },
   {
