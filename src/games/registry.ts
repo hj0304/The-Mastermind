@@ -123,7 +123,7 @@ export const GAMES: GameMeta[] = [
     name: '수(數)의 진',
     tagline: '합이 10을 넘으면 큰 수가, 못 넘으면 작은 수가 이긴다',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'planned',
+    status: 'playable',
     origin: '스트라테고(Stratego) 계열 은폐 기물전',
   },
   {
