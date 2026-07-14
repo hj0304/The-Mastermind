@@ -3,6 +3,7 @@ import { GAMES } from './games/registry.ts';
 import type { GameMeta } from './games/registry.ts';
 import MonochromeGame from './games/monochrome/MonochromeGame.tsx';
 import BlindPokerGame from './games/blind-poker/BlindPokerGame.tsx';
+import { getRecord } from './stats.ts';
 import './App.css';
 
 const STATUS_LABEL: Record<GameMeta['status'], string> = {
@@ -28,6 +29,12 @@ function GameCard({ game, onPlay }: { game: GameMeta; onPlay: (id: string) => vo
         {game.solo && <span className="mode">🤖 AI 대전</span>}
         {game.multi && <span className="mode">⚔️ 멀티플레이</span>}
         <span className="mode players">{game.minPlayers === game.maxPlayers ? `${game.minPlayers}인` : `${game.minPlayers}~${game.maxPlayers}인`}</span>
+        {game.status === 'playable' && (() => {
+          const r = getRecord(game.id);
+          return r.wins + r.losses > 0 ? (
+            <span className="mode record">{r.wins}승 {r.losses}패</span>
+          ) : null;
+        })()}
       </div>
     </button>
   );
