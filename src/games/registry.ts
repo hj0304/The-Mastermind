@@ -27,7 +27,7 @@ export const GAMES: GameMeta[] = [
     name: '밀림장기',
     tagline: '3×4 초소형 장기판, 잡은 말은 내 말이 된다',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'wip',
+    status: 'playable',
     origin: '동물장기(どうぶつしょうぎ) 계열 미니 장기',
   },
   {
