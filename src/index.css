@@ -40,3 +40,37 @@ button {
   border: none;
   cursor: pointer;
 }
+
+/* ---------- 공용: EXTREME 전적/학습 표시 ---------- */
+.setup-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.extreme-tag {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  padding: 4px 14px;
+}
+
+.record-line {
+  font-size: 14px;
+}
+.record-line b { color: var(--accent); }
+
+.memory-line {
+  font-size: 12px;
+  color: var(--accent-2);
+}
+
+.mode.record {
+  background: rgba(255, 181, 71, 0.14);
+  color: var(--accent);
+  font-weight: 700;
+}
