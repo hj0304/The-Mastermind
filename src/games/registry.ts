@@ -59,7 +59,7 @@ export const GAMES: GameMeta[] = [
     name: '윷과 거짓말',
     tagline: '결과는 나만 안다 — 속이고, 의심하고, 잡아내라',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 4,
-    status: 'planned',
+    status: 'playable',
     origin: '챠오챠오(Ciao Ciao) + 한국 전통 윷놀이',
   },
   {
