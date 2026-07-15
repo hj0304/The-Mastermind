@@ -8,6 +8,7 @@ import NumberJanggiGame from './games/number-janggi/NumberJanggiGame.tsx';
 import QuattroGame from './games/quattro/QuattroGame.tsx';
 import Monochrome2Game from './games/monochrome2/Monochrome2Game.tsx';
 import MonochromeRaiseGame from './games/monochrome-raise/MonochromeRaiseGame.tsx';
+import ReflectGame from './games/reflect/ReflectGame.tsx';
 import { getRecord } from './stats.ts';
 import './App.css';
 
@@ -68,6 +69,9 @@ export default function App() {
   }
   if (activeGame === 'monochrome-raise') {
     return <MonochromeRaiseGame onExit={() => setActiveGame(null)} />;
+  }
+  if (activeGame === 'reflect') {
+    return <ReflectGame onExit={() => setActiveGame(null)} />;
   }
 
   return (
