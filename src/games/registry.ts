@@ -67,7 +67,7 @@ export const GAMES: GameMeta[] = [
     name: '리플렉트',
     tagline: '거울을 조종해 광선으로 왕을 노리는 반사 장기',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'planned',
+    status: 'playable',
     origin: '레이저 반사 체스(Khet) 계열',
   },
   {
