@@ -83,7 +83,7 @@ export const GAMES: GameMeta[] = [
     name: '모노크롬 II',
     tagline: '99포인트를 쪼개 거는 아홉 번의 눈치 경매',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'planned',
+    status: 'playable',
     origin: '블로토 대령 게임(자원 배분 게임이론)',
   },
   {
@@ -115,7 +115,7 @@ export const GAMES: GameMeta[] = [
     name: '모노크롬 레이즈',
     tagline: '순서와 칩을 먼저 설계하라 — 콜과 폴드의 숫자 전쟁',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'planned',
+    status: 'playable',
     origin: '블라인드 비딩 + 포커식 콜/폴드',
   },
   {
