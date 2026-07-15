@@ -9,6 +9,7 @@ import QuattroGame from './games/quattro/QuattroGame.tsx';
 import Monochrome2Game from './games/monochrome2/Monochrome2Game.tsx';
 import MonochromeRaiseGame from './games/monochrome-raise/MonochromeRaiseGame.tsx';
 import ReflectGame from './games/reflect/ReflectGame.tsx';
+import YutTacticsGame from './games/yut-tactics/YutTacticsGame.tsx';
 import { getRecord } from './stats.ts';
 import './App.css';
 
@@ -72,6 +73,9 @@ export default function App() {
   }
   if (activeGame === 'reflect') {
     return <ReflectGame onExit={() => setActiveGame(null)} />;
+  }
+  if (activeGame === 'yut-tactics') {
+    return <YutTacticsGame onExit={() => setActiveGame(null)} />;
   }
 
   return (

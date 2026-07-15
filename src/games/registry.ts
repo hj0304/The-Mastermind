@@ -50,8 +50,8 @@ export const GAMES: GameMeta[] = [
     id: 'yut-tactics',
     name: '윷 대전',
     tagline: '윷을 던지지 말고 선택하라 — 심리전이 된 윷놀이',
-    solo: true, multi: true, minPlayers: 2, maxPlayers: 4,
-    status: 'planned',
+    solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
+    status: 'playable',
     origin: '한국 전통 윷놀이 + 동시 선택 심리전',
   },
   {
