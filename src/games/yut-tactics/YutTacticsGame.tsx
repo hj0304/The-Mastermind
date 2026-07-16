@@ -8,6 +8,7 @@ import {
   createGame,
   moveOptions,
   resolveThrow,
+  totalToSteps,
 } from './engine.ts';
 import { chooseAiMove, chooseAiSticks, recordGameEnd, recordPickForLearning } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
@@ -21,39 +22,44 @@ const AI: PlayerId = 1;
 type Phase = 'setup' | 'playing' | 'done';
 
 interface Reveal {
-  next: YState;
   picks: [number, number]; // [human 앞면 수, ai 앞면 수]
   steps: number;
-  passed: boolean;
+  again: boolean;
+  mover: PlayerId;
 }
 
 export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<Phase>('setup');
   const [state, setState] = useState<YState | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selectedStep, setSelectedStep] = useState(0);
+  const [selectedFrom, setSelectedFrom] = useState<number | null>(null);
   const [reveal, setReveal] = useState<Reveal | null>(null);
   const [aiActing, setAiActing] = useState(false);
   const recorded = useRef(false);
 
   function startGame() {
     setState(createGame(Math.random() < 0.5 ? HUMAN : AI));
-    setSelected(null);
+    setSelectedStep(0);
+    setSelectedFrom(null);
     setReveal(null);
     recorded.current = false;
     setPhase('playing');
   }
 
-  // 던지기 연출 종료 → 결과 상태 적용
+  // 던지기 연출 종료 → 그 시점의 최신 상태에 결과 적용 (미리 계산한 상태를
+  // 덮어쓰면 그 사이의 변화가 지워지는 레이스가 생긴다)
   useEffect(() => {
     if (!reveal) return;
     const timer = setTimeout(() => {
-      setState(reveal.next);
+      setState((s) =>
+        s && s.phase === 'choose' && !s.result ? resolveThrow(s, reveal.picks) : s,
+      );
       setReveal(null);
     }, 2100);
     return () => clearTimeout(timer);
   }, [reveal]);
 
-  // AI 무버의 이동 자동 진행
+  // AI 무버의 이동 자동 진행 (남은 결과를 하나씩 적용)
   useEffect(() => {
     if (phase !== 'playing' || !state || state.result || reveal) return;
     if (state.phase === 'move' && state.turn === AI) {
@@ -88,35 +94,60 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
     if (!state || state.phase !== 'choose' || state.result || reveal) return;
     const aiPick = chooseAiSticks(state, AI);
     recordPickForLearning(state.turn === HUMAN, humanPick);
-    const next = resolveThrow(state, [humanPick, aiPick]);
-    setSelected(null);
+    const steps = totalToSteps(humanPick + aiPick);
+    setSelectedStep(0);
+    setSelectedFrom(null);
     setReveal({
-      next,
       picks: [humanPick, aiPick],
-      steps: next.lastThrow!.steps,
-      passed: next.lastThrow!.passed,
+      steps,
+      again: steps === 4 || steps === 5,
+      mover: state.turn,
     });
   }
 
-  const opts =
-    state && state.phase === 'move' && state.turn === HUMAN && !reveal ? moveOptions(state) : [];
-  const fromNodes = new Set(opts.map((o) => o.from));
-  const selectedOpts = opts.filter((o) => o.from === selected);
-
-  function onSelectFrom(from: number) {
-    if (!fromNodes.has(from)) {
-      setSelected(null);
-      return;
-    }
-    const cand = opts.filter((o) => o.from === from);
-    if (cand.length === 1) doMove(cand[0]);
-    else setSelected(from);
-  }
+  const myMovePhase =
+    !!state && state.phase === 'move' && state.turn === HUMAN && !state.result && !reveal;
+  const allOpts = myMovePhase ? moveOptions(state) : [];
+  const stepIdx = state && selectedStep < state.pending.length ? selectedStep : 0;
+  const stepOpts = allOpts.filter((o) => o.stepIdx === stepIdx);
+  const fromNodes = new Set(stepOpts.map((o) => o.from));
+  const destOpts = selectedFrom !== null ? stepOpts.filter((o) => o.from === selectedFrom) : [];
+  const targetNodes = new Set(destOpts.map((o) => o.dest).filter((d) => d !== GOAL));
+  const goalOpt = destOpts.find((o) => o.dest === GOAL);
 
   function doMove(o: MoveOption) {
     if (!state) return;
-    setState(applyMove(state, o));
-    setSelected(null);
+    // 함수형 업데이트 + 방어: 연속 클릭 등으로 상태가 이미 바뀌었으면 무시
+    setState((s) => {
+      if (!s || s.phase !== 'move' || s.result) return s;
+      try {
+        return applyMove(s, o);
+      } catch {
+        return s;
+      }
+    });
+    setSelectedStep(0);
+    setSelectedFrom(null);
+  }
+
+  function onNodeClick(n: number) {
+    if (!myMovePhase) return;
+    // 도착 칸 클릭 → 이동 확정
+    if (selectedFrom !== null) {
+      const hit = destOpts.find((o) => o.dest === n);
+      if (hit) {
+        doMove(hit);
+        return;
+      }
+    }
+    // 출발 말 선택
+    if (fromNodes.has(n)) {
+      const cand = stepOpts.filter((o) => o.from === n);
+      if (cand.length === 1) doMove(cand[0]);
+      else setSelectedFrom(n);
+      return;
+    }
+    setSelectedFrom(null);
   }
 
   if (phase === 'setup') {
@@ -128,10 +159,11 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
           <h2>윷 대전</h2>
           <p className="yt-rule-summary">
             윷의 결과는 운이 아닙니다. 매 던지기마다 <b>양쪽이 윷가락 2개씩의 앞/뒤를 비밀
-            선택</b>하고, 던져진 4가락의 앞면 수가 결과가 됩니다 — 0개 <b>모</b>(5칸·한번 더),
-            1개 <b>뒷도</b>(1칸 후진!), 2개 <b>개</b>, 3개 <b>걸</b>, 4개 <b>윷</b>(한번 더).
-            결과는 차례인 쪽 말에 적용됩니다. 잡으면 한 번 더, 같은 칸의 내 말은 업고 갑니다.
-            말 2개 먼저 완주하면 승리 — <b>1번 칸에서 뒷도를 받으면 그대로 완주</b>입니다.
+            선택</b>하고, 던져진 4가락의 앞면 수가 결과가 됩니다 — 0개 <b>모</b>(5칸), 1개{' '}
+            <b>뒷도</b>(1칸 후진!), 2개 <b>개</b>, 3개 <b>걸</b>, 4개 <b>윷</b>. 윷·모가 나오면{' '}
+            <b>한 번 더 던진 뒤</b> 모인 결과를 원하는 순서로 씁니다. 잡으면 한 번 더, 같은
+            칸의 내 말은 업고 갑니다. 말 2개 먼저 완주하면 승리 — <b>1번 칸에서 뒷도를 받으면
+            그대로 완주</b>입니다.
           </p>
           <div className="setup-stats">
             <span className="extreme-tag">EXTREME AI</span>
@@ -172,16 +204,39 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
                 ? '승리!'
                 : 'AI 승리'
             : state.phase === 'choose'
-              ? `${moverName}의 말이 움직이는 던지기`
+              ? state.pending.length > 0
+                ? `${moverName} — 윷·모! 한 번 더 던집니다`
+                : `${moverName}의 말이 움직이는 던지기`
               : aiActing
                 ? 'AI가 말을 고르는 중…'
-                : '움직일 말(반짝이는 칸)을 선택하세요'}
+                : selectedFrom !== null
+                  ? '초록 칸(도착지)을 눌러 이동하세요'
+                  : '움직일 말(반짝이는 칸)을 선택하세요'}
         </span>
         {lt && !reveal && (
           <span className="yt-throw-info">
             나 앞{lt.picks[HUMAN]} + AI 앞{lt.picks[AI]} = <b>{STEP_NAME[lt.steps]}</b>
-            {lt.passed && ' (움직일 말 없음 — 차례 넘김)'}
+            {lt.passed && ' (쓸 수 있는 결과 없음 — 차례 넘김)'}
           </span>
+        )}
+        {/* 모인 결과 칩 */}
+        {state.pending.length > 0 && !reveal && (
+          <div className="yt-step-chips">
+            <span className="chips-label">남은 결과:</span>
+            {state.pending.map((st, i) => (
+              <button
+                key={i}
+                className={`yt-step-chip ${myMovePhase && i === stepIdx ? 'active' : ''}`}
+                disabled={!myMovePhase}
+                onClick={() => {
+                  setSelectedStep(i);
+                  setSelectedFrom(null);
+                }}
+              >
+                {STEP_NAME[st]}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -189,18 +244,21 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
 
       <YutBoard
         pieces={boardPieces}
-        movableNodes={new Set([...fromNodes].filter((n) => n >= 0))}
-        selectedNode={selected}
+        movableNodes={
+          selectedFrom === null ? new Set([...fromNodes].filter((n) => n >= 0)) : undefined
+        }
+        targetNodes={targetNodes}
+        selectedNode={selectedFrom}
         lastDest={state.lastMoveDest ?? null}
-        onNodeClick={onSelectFrom}
+        onNodeClick={onNodeClick}
       />
 
       <PlayerTray
         state={state}
         p={HUMAN}
         label="나"
-        movable={fromNodes.has(HOME)}
-        onEnter={() => onSelectFrom(HOME)}
+        movable={myMovePhase && selectedFrom === null && fromNodes.has(HOME)}
+        onEnter={() => onNodeClick(HOME)}
       />
 
       {/* 조작 패널 */}
@@ -225,15 +283,13 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
             </div>
           </>
         )}
-        {state.phase === 'move' && state.turn === HUMAN && !reveal && selectedOpts.length > 1 && (
-          <div className="yt-branch-btns">
-            {selectedOpts.map((o) => (
-              <button key={o.branch} className="yt-pick" onClick={() => doMove(o)}>
-                {o.branch === 1 ? '지름길' : selected === 22 ? '횡단길' : '바깥길'} →{' '}
-                {o.dest === GOAL ? '완주!' : o.catches ? '잡기!' : '전진'}
-              </button>
-            ))}
-          </div>
+        {myMovePhase && goalOpt && (
+          <button className="primary-btn" onClick={() => doMove(goalOpt)}>
+            🏁 완주!
+          </button>
+        )}
+        {myMovePhase && selectedFrom !== null && !goalOpt && destOpts.length > 1 && (
+          <span className="yt-note dim">갈림길 — 초록으로 표시된 도착 칸 중 하나를 누르세요</span>
         )}
       </div>
 
@@ -258,9 +314,9 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
           </div>
           <div className="yut-throw-result">{STEP_NAME[reveal.steps]}!</div>
           <div className="yut-throw-sub">
-            {reveal.next.lastThrow!.mover === HUMAN ? '내' : 'AI'} 말이{' '}
-            {reveal.steps === -1 ? '1칸 후진' : `${reveal.steps}칸 전진`}
-            {reveal.passed && ' — 움직일 말이 없어 차례를 넘깁니다'}
+            {reveal.again
+              ? '윷·모 — 한 번 더 던집니다!'
+              : `${reveal.mover === HUMAN ? '내' : 'AI'} 말이 결과를 사용합니다`}
           </div>
         </div>
       )}

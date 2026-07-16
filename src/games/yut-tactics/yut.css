@@ -36,6 +36,24 @@
 .yt-throw-info { color: var(--text-dim); font-size: 12px; }
 .yt-throw-info b { color: var(--accent); font-size: 14px; }
 
+/* 모인 결과 칩 */
+.yt-step-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.chips-label { font-size: 11px; color: var(--text-dim); }
+.yt-step-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.yt-step-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(255, 181, 71, 0.12);
+}
+.yt-step-chip:disabled { opacity: 0.85; }
+
 /* 트레이 */
 .yt-tray {
   display: flex;
