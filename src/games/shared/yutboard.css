@@ -1,0 +1,177 @@
+/* 공용 윷판 */
+.yutboard {
+  width: 100%;
+  display: block;
+}
+
+.yb-board-bg { fill: #241a10; stroke: #4a3721; stroke-width: 2; }
+.yb-board-inner { fill: #2d2114; stroke: #3c2c19; stroke-width: 1; }
+
+.yb-path {
+  stroke: #4e3c25;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.yb-station { cursor: pointer; }
+.yb-node {
+  fill: #1c1510;
+  stroke: #6b5333;
+  stroke-width: 2;
+  transition: fill 0.2s;
+}
+.yb-node-outer {
+  fill: none;
+  stroke: #6b5333;
+  stroke-width: 2;
+}
+.yb-station.sel .yb-node { fill: rgba(255, 181, 71, 0.4); stroke: var(--accent); }
+.yb-station.last .yb-node { fill: rgba(255, 181, 71, 0.2); }
+.yb-station.marked .yb-node { fill: rgba(122, 162, 255, 0.3); stroke: var(--accent-2); }
+.yb-station.movable .yb-node { stroke: var(--accent); stroke-width: 2.5; }
+.yb-node-pulse {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  opacity: 0.8;
+  animation: yb-node-pulse 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes yb-node-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 0.15; }
+}
+
+.yb-start-label {
+  font-size: 12px;
+  font-weight: 700;
+  fill: #8a6d45;
+}
+
+/* 말 */
+.yb-piece {
+  cursor: pointer;
+  transition: transform 0.55s cubic-bezier(0.34, 1.3, 0.5, 1);
+}
+.yb-piece-shadow { fill: rgba(0, 0, 0, 0.45); }
+.yb-piece.pl0 .yb-piece-body { fill: var(--accent); stroke: #fff3d9; stroke-width: 1.5; }
+.yb-piece.pl1 .yb-piece-body { fill: var(--accent-2); stroke: #dfe9ff; stroke-width: 1.5; }
+.yb-piece.pl0 .yb-piece-cap { fill: #fff3d9; }
+.yb-piece.pl1 .yb-piece-cap { fill: #dfe9ff; }
+
+/* ---------- 윷가락 던지기 (윷 대전) ---------- */
+.yut-throw-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 16, 0.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  z-index: 20;
+}
+.yut-sticks { display: flex; gap: 18px; perspective: 500px; }
+.yut-stick {
+  width: 34px;
+  height: 120px;
+  border-radius: 17px;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: yut-tumble 0.85s cubic-bezier(0.3, 0.6, 0.4, 1) forwards;
+}
+.yut-stick:nth-child(2) { animation-duration: 0.95s; }
+.yut-stick:nth-child(3) { animation-duration: 1.05s; }
+.yut-stick:nth-child(4) { animation-duration: 1.18s; }
+@keyframes yut-tumble {
+  0% { transform: translateY(-260px) rotateX(0turn) rotate(0deg); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(0) rotateX(3turn) rotate(var(--tilt, 4deg)); opacity: 1; }
+}
+/* 앞면(배): 평평한 밝은 면 */
+.yut-stick.front {
+  background: linear-gradient(180deg, #e8d9bc, #cdb488);
+  border: 2px solid #b59a6b;
+}
+/* 뒷면(등): 어두운 반원목 + 빗금 */
+.yut-stick.back {
+  background:
+    repeating-linear-gradient(35deg, transparent 0 12px, rgba(0, 0, 0, 0.25) 12px 16px),
+    linear-gradient(180deg, #7a5c38, #5d4227);
+  border: 2px solid #4a3520;
+}
+.yut-stick .stick-mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  font-size: 13px;
+  color: rgba(60, 40, 15, 0.55);
+  font-weight: 800;
+}
+.yut-stick.back .stick-mark { color: rgba(255, 235, 200, 0.4); }
+
+.yut-throw-result {
+  font-size: 44px;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow: 0 0 18px rgba(255, 181, 71, 0.5);
+  animation: yut-result-pop 0.35s cubic-bezier(0.3, 1.6, 0.6, 1) 1.15s both;
+}
+.yut-throw-sub {
+  font-size: 14px;
+  color: var(--text-dim);
+  animation: yut-result-pop 0.3s ease 1.25s both;
+}
+@keyframes yut-result-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ---------- 10면체 주사위 (윷과 거짓말) ---------- */
+.d10-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 16, 0.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  z-index: 20;
+}
+.d10 {
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 900;
+  color: #14161c;
+  background: linear-gradient(145deg, #ffd98a, #e8a63d);
+  clip-path: polygon(50% 0%, 93% 25%, 100% 60%, 75% 100%, 25% 100%, 0% 60%, 7% 25%);
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+}
+.d10.rolling { animation: d10-spin 0.12s linear infinite; }
+@keyframes d10-spin {
+  0% { transform: rotate(-9deg) scale(1); }
+  50% { transform: rotate(9deg) scale(1.06); }
+  100% { transform: rotate(-9deg) scale(1); }
+}
+.d10.settled { animation: yut-result-pop 0.3s cubic-bezier(0.3, 1.6, 0.6, 1) both; }
+.d10.hidden-face {
+  background: linear-gradient(145deg, #3a4356, #232c42);
+  color: #7d8aa5;
+}
+.d10-caption { font-size: 14px; color: var(--text-dim); text-align: center; line-height: 1.6; }
+.d10-caption b { color: var(--accent); }
+.d10-secret-tag {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}

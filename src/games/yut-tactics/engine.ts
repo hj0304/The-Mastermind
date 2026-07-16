@@ -17,6 +17,8 @@
  * 10→25→26→22→27→28→0. 중앙(22)에서 출발 시 27(출구) 또는 23(횡단) 선택.
  */
 
+import { YUT_JUNCTIONS, YUT_PREV, yutNextNode } from '../shared/yut-graph.ts';
+
 export type PlayerId = 0 | 1;
 
 export const HOME = -1;
@@ -62,20 +64,10 @@ export const STEP_NAME: Record<number, string> = {
   5: '모',
 };
 
-const NEXT: Record<number, number> = {
-  0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10,
-  10: 11, 11: 12, 12: 13, 13: 14, 14: 15, 15: 16, 16: 17, 17: 18, 18: 19, 19: 0,
-  20: 21, 21: 22, 23: 24, 24: 15, 25: 26, 26: 22, 27: 28, 28: 0,
-};
-
-const PREV: Record<number, number> = {
-  1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8, 10: 9,
-  11: 10, 12: 11, 13: 12, 14: 13, 15: 14, 16: 15, 17: 16, 18: 17, 19: 18,
-  20: 5, 21: 20, 22: 21, 23: 22, 24: 23, 25: 10, 26: 25, 27: 22, 28: 27,
-};
+const PREV = YUT_PREV;
 
 /** 분기 가능 노드 (그 칸에서 이동을 시작할 때만) */
-export const JUNCTIONS = new Set([5, 10, 22]);
+export const JUNCTIONS = YUT_JUNCTIONS;
 
 export function createGame(firstTurn: PlayerId): YState {
   return {
@@ -97,15 +89,7 @@ export function totalToSteps(total: number): number {
   return [5, -1, 2, 3, 4][total];
 }
 
-function nextNode(cur: number, cameFrom: number | null, firstStepBranch: 0 | 1 | null): number {
-  if (cur === 5 && firstStepBranch !== null) return firstStepBranch === 1 ? 20 : 6;
-  if (cur === 10 && firstStepBranch !== null) return firstStepBranch === 1 ? 25 : 11;
-  if (cur === 22) {
-    if (firstStepBranch !== null) return firstStepBranch === 1 ? 23 : 27;
-    return cameFrom === 26 ? 27 : 23; // 통과: 들어온 방향의 직진
-  }
-  return NEXT[cur];
-}
+const nextNode = yutNextNode;
 
 /** from에서 m(≥2)칸 전진한 결과. from=HOME이면 0에서 출발 */
 export function walkForward(
