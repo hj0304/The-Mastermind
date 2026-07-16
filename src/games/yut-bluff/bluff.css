@@ -149,6 +149,41 @@
 .yb-respond.challenge { border-color: var(--danger); color: var(--danger); }
 .yb-respond.challenge:hover { background: rgba(255, 93, 93, 0.12); }
 
+/* 라운드 결과 배너 */
+.yb-banner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 16, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+}
+.yb-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 18px;
+  padding: 28px 40px;
+  max-width: 340px;
+  text-align: center;
+  animation: yb-banner-pop 0.3s cubic-bezier(0.3, 1.5, 0.6, 1) both;
+}
+.yb-banner.good { border-color: var(--accent); box-shadow: 0 0 22px rgba(255, 181, 71, 0.25); }
+.yb-banner.bad { border-color: var(--danger); box-shadow: 0 0 22px rgba(255, 93, 93, 0.25); }
+.yb-banner-icon { font-size: 38px; }
+.yb-banner-title { font-size: 20px; font-weight: 900; }
+.yb-banner.good .yb-banner-title { color: var(--accent); }
+.yb-banner.bad .yb-banner-title { color: var(--danger); }
+.yb-banner-desc { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+@keyframes yb-banner-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* 종료 */
 .yb-overlay {
   position: fixed;
