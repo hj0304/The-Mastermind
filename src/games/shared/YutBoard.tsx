@@ -10,8 +10,10 @@ export interface BoardPiece {
 
 interface YutBoardProps {
   pieces: BoardPiece[];
-  /** 반짝이며 클릭 가능한 칸 */
+  /** 반짝이며 클릭 가능한 칸 (이동할 말 선택) */
   movableNodes?: Set<number>;
+  /** 도착 후보 칸 (초록 펄스 — 클릭으로 이동 확정) */
+  targetNodes?: Set<number>;
   selectedNode?: number | null;
   /** 직전 이동 도착 칸 강조 */
   lastDest?: number | null;
@@ -24,6 +26,7 @@ interface YutBoardProps {
 export default function YutBoard({
   pieces,
   movableNodes,
+  targetNodes,
   selectedNode,
   lastDest,
   markedNode,
@@ -54,17 +57,20 @@ export default function YutBoard({
         const n = Number(id);
         const big = YUT_BIG_NODES.has(n);
         const movable = movableNodes?.has(n) ?? false;
+        const target = targetNodes?.has(n) ?? false;
         return (
           <g
             key={n}
-            className={`yb-station ${movable ? 'movable' : ''} ${
+            className={`yb-station ${movable ? 'movable' : ''} ${target ? 'target' : ''} ${
               selectedNode === n ? 'sel' : ''
             } ${lastDest === n ? 'last' : ''} ${markedNode === n ? 'marked' : ''}`}
             onClick={() => onNodeClick?.(n)}
           >
             {big && <circle cx={x} cy={y} r={19} className="yb-node-outer" />}
             <circle cx={x} cy={y} r={big ? 12 : 10} className="yb-node" />
-            {movable && <circle cx={x} cy={y} r={big ? 23 : 16} className="yb-node-pulse" />}
+            {(movable || target) && (
+              <circle cx={x} cy={y} r={big ? 23 : 16} className="yb-node-pulse" />
+            )}
           </g>
         );
       })}
@@ -82,6 +88,8 @@ export default function YutBoard({
         const sideOff = group.some((g) => g.player !== p.player) ? (p.player === 0 ? -7 : 7) : 0;
         const dx = sideOff + stackIdx * 3;
         const dy = -4 - stackIdx * 5;
+        // 업힌 말은 맨 위 말에 개수 배지를 달아 명확히 표시
+        const topOfStack = stackIdx === mine.length - 1 && mine.length > 1;
         return (
           <g
             key={p.id}
@@ -92,6 +100,14 @@ export default function YutBoard({
             <ellipse cx={0} cy={7} rx={9} ry={3.5} className="yb-piece-shadow" />
             <circle cx={0} cy={0} r={10} className="yb-piece-body" />
             <circle cx={0} cy={-3} r={4.5} className="yb-piece-cap" />
+            {topOfStack && (
+              <g className="yb-stack-badge">
+                <circle cx={9} cy={-9} r={7.5} className="yb-stack-badge-bg" />
+                <text x={9} y={-5.5} textAnchor="middle" className="yb-stack-badge-text">
+                  {mine.length}
+                </text>
+              </g>
+            )}
           </g>
         );
       })}

@@ -29,6 +29,7 @@
 .yb-station.last .yb-node { fill: rgba(255, 181, 71, 0.2); }
 .yb-station.marked .yb-node { fill: rgba(122, 162, 255, 0.3); stroke: var(--accent-2); }
 .yb-station.movable .yb-node { stroke: var(--accent); stroke-width: 2.5; }
+.yb-station.target .yb-node { stroke: #5eea84; stroke-width: 2.5; fill: rgba(94, 234, 132, 0.16); }
 .yb-node-pulse {
   fill: none;
   stroke: var(--accent);
@@ -37,6 +38,7 @@
   animation: yb-node-pulse 1.2s ease-in-out infinite;
   pointer-events: none;
 }
+.yb-station.target .yb-node-pulse { stroke: #5eea84; }
 @keyframes yb-node-pulse {
   0%, 100% { opacity: 0.75; }
   50% { opacity: 0.15; }
@@ -58,6 +60,8 @@
 .yb-piece.pl1 .yb-piece-body { fill: var(--accent-2); stroke: #dfe9ff; stroke-width: 1.5; }
 .yb-piece.pl0 .yb-piece-cap { fill: #fff3d9; }
 .yb-piece.pl1 .yb-piece-cap { fill: #dfe9ff; }
+.yb-stack-badge-bg { fill: #14161c; stroke: #fff; stroke-width: 1.2; }
+.yb-stack-badge-text { font-size: 10px; font-weight: 800; fill: #fff; pointer-events: none; }
 
 /* ---------- 윷가락 던지기 (윷 대전) ---------- */
 .yut-throw-overlay {

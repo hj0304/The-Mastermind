@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { BState, PlayerId } from './engine.ts';
+import type { BState, PlayerId, RoundRec } from './engine.ts';
 import {
   DEAD,
   GOAL,
@@ -36,33 +36,48 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [pendingValue, setPendingValue] = useState<number | null>(null);
   const [rollAnim, setRollAnim] = useState<'mine' | 'ai' | null>(null);
+  const [banner, setBanner] = useState<RoundRec | null>(null);
   const [aiActing, setAiActing] = useState(false);
   const recorded = useRef(false);
   const animShownForRound = useRef(-1);
+  const bannerShownForLen = useRef(0);
 
   function startGame() {
     setState(createGame(Math.random() < 0.5 ? HUMAN : AI));
     setSelected(null);
     setPendingValue(null);
+    setBanner(null);
     recorded.current = false;
     animShownForRound.current = -1;
+    bannerShownForLen.current = 0;
     setPhase('playing');
   }
 
-  // 굴림 연출: declare 단계 진입 시 1회
+  // 라운드 결과 배너: 믿음/의심 결과를 크게 보여준다
   useEffect(() => {
-    if (phase !== 'playing' || !state || state.result) return;
+    if (phase !== 'playing' || !state) return;
+    if (state.history.length > bannerShownForLen.current) {
+      bannerShownForLen.current = state.history.length;
+      setBanner(state.history[state.history.length - 1]);
+      const timer = setTimeout(() => setBanner(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, state]);
+
+  // 굴림 연출: declare 단계 진입 시 1회 (결과 배너가 끝난 뒤)
+  useEffect(() => {
+    if (phase !== 'playing' || !state || state.result || banner) return;
     if (state.phase === 'declare' && animShownForRound.current !== state.round) {
       animShownForRound.current = state.round;
       setRollAnim(state.turn === HUMAN ? 'mine' : 'ai');
       const timer = setTimeout(() => setRollAnim(null), state.turn === HUMAN ? 2000 : 1500);
       return () => clearTimeout(timer);
     }
-  }, [phase, state]);
+  }, [phase, state, banner]);
 
   // AI 자동 진행 (선언 또는 응답)
   useEffect(() => {
-    if (phase !== 'playing' || !state || state.result || rollAnim) return;
+    if (phase !== 'playing' || !state || state.result || rollAnim || banner) return;
     const aiDeclares = state.phase === 'declare' && state.turn === AI;
     const aiResponds = state.phase === 'respond' && state.turn === HUMAN;
     if (!aiDeclares && !aiResponds) return;
@@ -83,7 +98,7 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
       setAiActing(false);
     }, 1100 + Math.random() * 500);
     return () => clearTimeout(timer);
-  }, [phase, state, rollAnim]);
+  }, [phase, state, rollAnim, banner]);
 
   // 종료 감지
   useEffect(() => {
@@ -95,21 +110,43 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
           recordResult('yut-bluff', state.result.winner === HUMAN);
         }
       }
-      const timer = setTimeout(() => setPhase('done'), 1100);
+      const timer = setTimeout(() => setPhase('done'), 2300);
       return () => clearTimeout(timer);
     }
   }, [phase, state]);
 
   const humanDeclaring =
-    !!state && state.phase === 'declare' && state.turn === HUMAN && !state.result && !rollAnim;
+    !!state &&
+    state.phase === 'declare' &&
+    state.turn === HUMAN &&
+    !state.result &&
+    !rollAnim &&
+    !banner;
   const humanResponding =
-    !!state && state.phase === 'respond' && state.turn === AI && !state.result && !rollAnim;
+    !!state &&
+    state.phase === 'respond' &&
+    state.turn === AI &&
+    !state.result &&
+    !rollAnim &&
+    !banner;
 
   const froms = humanDeclaring ? movableFroms(state, HUMAN) : [];
   const kkang = humanDeclaring ? kkangTargets(state, HUMAN) : [];
 
+  // 갈림길 도착 후보 (분기 대기 중일 때 판에 초록으로 표시)
+  const branchDests =
+    humanDeclaring && selected !== null && pendingValue !== null
+      ? branchOptions(selected).map((b) => ({ branch: b, dest: walkBluff(selected, pendingValue, b) }))
+      : [];
+
   function onSelect(pos: number) {
     if (!humanDeclaring) return;
+    // 분기 대기 중: 도착 칸 클릭으로 경로 확정
+    const hitBranch = branchDests.find((bd) => bd.dest === pos);
+    if (hitBranch) {
+      onBranch(hitBranch.branch);
+      return;
+    }
     if (!froms.includes(pos)) {
       setSelected(null);
       setPendingValue(null);
@@ -119,19 +156,29 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
     setPendingValue(null);
   }
 
+  /** 함수형 업데이트 + 방어: 연속 클릭 등으로 상태가 이미 바뀌었으면 무시 */
+  function safeDeclare(value: number, from: number, branch: 0 | 1) {
+    setState((s) => {
+      if (!s || s.phase !== 'declare' || s.result) return s;
+      try {
+        return declare(s, { value, from, branch });
+      } catch {
+        return s;
+      }
+    });
+    setSelected(null);
+    setPendingValue(null);
+  }
+
   function onValue(v: number) {
     if (!state || selected === null) return;
     if (v === 0) {
-      setState(declare(state, { value: 0, from: selected, branch: 0 }));
-      setSelected(null);
-      setPendingValue(null);
+      safeDeclare(0, selected, 0);
       return;
     }
     const branches = branchOptions(selected);
     if (branches.length === 1) {
-      setState(declare(state, { value: v, from: selected, branch: 0 }));
-      setSelected(null);
-      setPendingValue(null);
+      safeDeclare(v, selected, 0);
     } else {
       setPendingValue(v); // 분기 선택 대기
     }
@@ -139,15 +186,20 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
 
   function onBranch(branch: 0 | 1) {
     if (!state || selected === null || pendingValue === null) return;
-    setState(declare(state, { value: pendingValue, from: selected, branch }));
-    setSelected(null);
-    setPendingValue(null);
+    safeDeclare(pendingValue, selected, branch);
   }
 
   function onRespond(challenge: boolean) {
     if (!state || !humanResponding) return;
     recordHumanResponse(state.declaration!.value, challenge);
-    setState(respond(state, challenge));
+    setState((s) => {
+      if (!s || s.phase !== 'respond' || s.result) return s;
+      try {
+        return respond(s, challenge);
+      } catch {
+        return s;
+      }
+    });
   }
 
   if (phase === 'setup') {
@@ -232,7 +284,10 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
 
       <YutBoard
         pieces={boardPieces}
-        movableNodes={new Set(froms.filter((n) => n >= 0))}
+        movableNodes={
+          pendingValue === null ? new Set(froms.filter((n) => n >= 0)) : undefined
+        }
+        targetNodes={new Set(branchDests.map((bd) => bd.dest).filter((x) => x !== GOAL))}
         selectedNode={selected}
         lastDest={last?.dest !== GOAL ? last?.dest ?? null : null}
         markedNode={humanResponding && d ? (d.from >= 0 ? d.from : null) : null}
@@ -282,17 +337,17 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
                 </button>
               </div>
             ) : (
-              <div className="yb-btns">
-                {branchOptions(selected!).map((b) => {
-                  const dest = walkBluff(selected!, pendingValue, b);
-                  return (
-                    <button key={b} className="yb-declare" onClick={() => onBranch(b)}>
-                      {b === 1 ? (selected === 22 ? '횡단길' : '지름길') : selected === 22 ? '출구' : '바깥길'}{' '}
-                      <small>{dest === GOAL ? '완주!' : '전진'}</small>
-                    </button>
-                  );
-                })}
-              </div>
+              <>
+                <span className="yb-note dim">갈림길 — 초록으로 표시된 도착 칸을 누르세요</span>
+                {branchDests.some((bd) => bd.dest === GOAL) && (
+                  <button
+                    className="primary-btn"
+                    onClick={() => onBranch(branchDests.find((bd) => bd.dest === GOAL)!.branch)}
+                  >
+                    🏁 완주 선언!
+                  </button>
+                )}
+              </>
             )}
           </>
         )}
@@ -318,6 +373,9 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
         )}
       </div>
 
+      {/* 라운드 결과 배너 (믿음/의심 결과) */}
+      {banner && !rollAnim && <OutcomeBanner rec={banner} />}
+
       {/* 주사위 굴림 연출 */}
       {rollAnim && (
         <D10Overlay
@@ -336,13 +394,7 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
                   ? '🏆 승리!'
                   : '패배…'}
             </h2>
-            <p>
-              {state.result.winner === HUMAN
-                ? '두 말이 먼저 완주했습니다'
-                : state.result.winner === AI
-                  ? 'AI에게 승리를 내주었습니다'
-                  : '승부를 가리지 못했습니다'}
-            </p>
+            <p>{endReason(state)}</p>
             <div className="end-actions">
               <button className="primary-btn" onClick={startGame}>다시 대전</button>
               <button className="ghost-btn" onClick={onExit}>로비로</button>
@@ -350,6 +402,65 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** 승패 사유 — 완주 승리와 전멸 승리를 구분해 보여준다 */
+function endReason(state: BState): string {
+  const w = state.result?.winner;
+  if (w == null) return '승부를 가리지 못했습니다';
+  const crossed = state.pieces[w].filter((x) => x === GOAL).length;
+  if (crossed >= 2) {
+    return w === HUMAN ? '두 말이 먼저 완주했습니다!' : 'AI의 두 말이 먼저 완주했습니다';
+  }
+  return w === HUMAN
+    ? 'AI의 남은 말이 2개 미만 — 전멸승입니다!'
+    : '남은 말이 2개 미만이 되어 패배했습니다';
+}
+
+/** 라운드 결과 배너 — 상대가 믿었는지/의심했는지를 크게 표시 */
+function OutcomeBanner({ rec }: { rec: RoundRec }) {
+  const rollerName = rec.roller === HUMAN ? '나' : 'AI';
+  const responderName = rec.roller === HUMAN ? 'AI' : '나';
+  let icon = '';
+  let title = '';
+  let desc = '';
+  let tone: 'good' | 'bad' | 'neutral' = 'neutral';
+
+  if (rec.outcome === 'moved') {
+    icon = rec.caught ? '💥' : '🤝';
+    title = `${responderName}${responderName === '나' ? '는' : '는'} 믿었습니다`;
+    desc = `${rollerName}의 「${VALUE_NAME[rec.declared]}」 — ${rec.declared}칸 전진${
+      rec.caught ? ' · 잡았습니다!' : ''
+    }${rec.extra ? ' · 한 번 더' : ''}`;
+    tone = rec.caught ? (rec.roller === HUMAN ? 'good' : 'bad') : 'neutral';
+  } else if (rec.outcome === 'liar-caught') {
+    icon = '🔥';
+    title = `${responderName}의 의심 적중!`;
+    desc = `「${VALUE_NAME[rec.declared]}」 선언은 거짓 — 실제는 「${VALUE_NAME[rec.roll]}」. ${rollerName}의 말 제거!`;
+    tone = rec.roller === HUMAN ? 'bad' : 'good';
+  } else if (rec.outcome === 'wrong-challenge') {
+    icon = '💦';
+    title = `${responderName}의 의심 실패…`;
+    desc = `「${VALUE_NAME[rec.declared]}」은 진실이었습니다. ${responderName}의 말 제거, 이동은 그대로${
+      rec.caught ? ' (잡음!)' : ''
+    }`;
+    tone = rec.roller === HUMAN ? 'good' : 'bad';
+  } else {
+    icon = '🕳️';
+    title = `${rollerName} — 「꽝」 인정`;
+    desc = `${rollerName}의 말 1개가 제거됩니다`;
+    tone = rec.roller === HUMAN ? 'bad' : 'good';
+  }
+
+  return (
+    <div className="yb-banner-overlay">
+      <div className={`yb-banner ${tone}`}>
+        <span className="yb-banner-icon">{icon}</span>
+        <span className="yb-banner-title">{title}</span>
+        <span className="yb-banner-desc">{desc}</span>
+      </div>
     </div>
   );
 }

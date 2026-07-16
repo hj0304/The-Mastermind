@@ -17,7 +17,6 @@ import {
   JUNCTIONS,
   applyMove,
   moveOptions,
-  resolveThrow,
   totalToSteps,
   walkForward,
 } from './engine.ts';
@@ -160,28 +159,36 @@ export function chooseAiMove(s: YState, me: PlayerId): MoveOption {
 
 // ---------- 윷가락 선택 (행렬게임) ----------
 
-/** total(0~4)의 결과가 s에서 실현될 때 me 관점 가치 */
+/**
+ * total(0~4)의 결과가 s에서 실현될 때 me 관점 가치.
+ * 근사: 이 결과 하나만 있다고 보고 무버의 최선 적용을 평가한다
+ * (윷/모의 추가 던지기·기존 누적 결과와의 상호작용은 보너스 상수로 근사).
+ */
 function outcomeValue(s: YState, me: PlayerId, total: number): number {
   const steps = totalToSteps(total);
   const mover = s.turn;
-  // 가상 적용: resolveThrow → (이동 가능하면) 무버 최선 이동
-  const picks: [number, number] = [0, 0];
-  picks[0] = Math.min(2, total);
-  picks[1] = total - picks[0];
-  const afterThrow = resolveThrow({ ...s, throwCount: 0 }, picks);
-  if (afterThrow.phase !== 'move') {
-    return evaluate(afterThrow, me); // 패스
+  const temp: YState = {
+    ...s,
+    phase: 'move',
+    pending: [steps],
+    extraThrow: false,
+    throwCount: 0,
+  };
+  const opts = moveOptions(temp);
+  if (opts.length === 0) {
+    return evaluate(s, me); // 쓸 수 없는 결과 (뒷도인데 판에 말 없음)
   }
   let bestV = mover === me ? -Infinity : Infinity;
-  for (const o of moveOptions(afterThrow)) {
-    const after = applyMove(afterThrow, o);
+  for (const o of opts) {
+    const after = applyMove(temp, o);
     let v = evaluate(after, me);
-    // 한 번 더의 가치: 잡기/윷/모로 턴 유지 시 보정
-    if (after.turn === mover && !after.result) v += mover === me ? 26 : -26;
+    // 한 번 더의 가치: 윷/모(추가 던지기) 또는 잡기 보너스
+    if (!after.result && (steps === 4 || steps === 5 || o.catches)) {
+      v += mover === me ? 26 : -26;
+    }
     if (after.result) v = after.result.winner === me ? 10000 : after.result.winner === null ? 0 : -10000;
     bestV = mover === me ? Math.max(bestV, v) : Math.min(bestV, v);
   }
-  void steps;
   return bestV;
 }
 
