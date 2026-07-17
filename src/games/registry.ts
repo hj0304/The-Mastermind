@@ -91,7 +91,7 @@ export const GAMES: GameMeta[] = [
     name: '야누스 포커',
     tagline: '앞면은 모두에게, 뒷면은 나에게만 — 양면베팅의 승부',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'planned',
+    status: 'playable',
     origin: '양면 카드 베팅 게임',
   },
   {
