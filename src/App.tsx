@@ -11,6 +11,7 @@ import MonochromeRaiseGame from './games/monochrome-raise/MonochromeRaiseGame.ts
 import ReflectGame from './games/reflect/ReflectGame.tsx';
 import YutTacticsGame from './games/yut-tactics/YutTacticsGame.tsx';
 import YutBluffGame from './games/yut-bluff/YutBluffGame.tsx';
+import JanusPokerGame from './games/janus-poker/JanusPokerGame.tsx';
 import { getRecord } from './stats.ts';
 import './App.css';
 
@@ -80,6 +81,9 @@ export default function App() {
   }
   if (activeGame === 'yut-bluff') {
     return <YutBluffGame onExit={() => setActiveGame(null)} />;
+  }
+  if (activeGame === 'janus-poker') {
+    return <JanusPokerGame onExit={() => setActiveGame(null)} />;
   }
 
   return (
