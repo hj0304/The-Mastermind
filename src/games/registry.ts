@@ -99,7 +99,7 @@ export const GAMES: GameMeta[] = [
     name: '암전 미궁',
     tagline: '보이지 않는 벽, 부딪히면 처음부터 — 기억만이 지도다',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'planned',
+    status: 'playable',
     origin: '마법의 미로(The Magic Labyrinth)',
   },
   {
