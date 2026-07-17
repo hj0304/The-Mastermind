@@ -1,0 +1,283 @@
+/* 암전 미궁 */
+
+.dm-root {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 12px 12px 32px;
+}
+
+.dm-setup {
+  text-align: center;
+  padding: 24px 8px;
+}
+.dm-setup h2 { margin: 8px 0 12px; }
+.dm-rule-summary {
+  color: var(--text-dim);
+  line-height: 1.7;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+/* ---------- 상태 바 ---------- */
+
+.dm-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.dm-side {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dm-side.active { border-color: var(--accent); box-shadow: 0 0 8px rgba(255, 184, 0, 0.25); }
+.dm-side .who { font-size: 0.8rem; color: var(--text-dim); }
+.dm-side.ai { text-align: right; }
+.dm-side .tray { font-size: 0.95rem; letter-spacing: 1px; }
+.dm-side .tray .empty { color: var(--border); font-style: normal; }
+.dm-side .tray i { font-style: normal; }
+
+.dm-target {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+.target-label { font-size: 0.68rem; color: var(--text-dim); }
+.target-chip {
+  font-size: 1.7rem;
+  line-height: 1.2;
+  background: radial-gradient(circle, rgba(255, 184, 0, 0.18), transparent 70%);
+  border-radius: 50%;
+  padding: 2px 8px;
+  animation: dm-target-pulse 1.6s ease-in-out infinite;
+}
+@keyframes dm-target-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+/* ---------- 보드 ---------- */
+
+.dm-board-wrap { display: flex; justify-content: center; }
+.dm-board {
+  position: relative;
+  width: min(92vw, 440px);
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  background: #0d0d17;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.dm-cell {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: default;
+  color: inherit;
+}
+.dm-cell .sym { font-size: 1.15rem; opacity: 0.5; filter: grayscale(0.4); }
+.dm-cell.corner { background: rgba(255, 255, 255, 0.03); }
+.dm-cell.home-me { background: rgba(80, 140, 255, 0.12); }
+.dm-cell.home-ai { background: rgba(255, 90, 90, 0.12); }
+.dm-cell.target .sym {
+  opacity: 1;
+  filter: none;
+  font-size: 1.45rem;
+  animation: dm-target-pulse 1.6s ease-in-out infinite;
+}
+.dm-cell.target { box-shadow: inset 0 0 14px rgba(255, 184, 0, 0.35); }
+.dm-cell.movable { cursor: pointer; }
+.dm-cell.movable::after {
+  content: '';
+  position: absolute;
+  inset: 15%;
+  border: 2px dashed rgba(120, 220, 130, 0.75);
+  border-radius: 10px;
+  animation: dm-movable 1.1s ease-in-out infinite;
+}
+@keyframes dm-movable {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+.dm-cell.chip-pop .sym { animation: dm-chip-pop 0.7s ease; }
+@keyframes dm-chip-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.8) rotate(12deg); }
+  100% { transform: scale(1); }
+}
+
+/* 충돌 벽 플래시 */
+.dm-wall-flash {
+  position: absolute;
+  background: #ff4d4d;
+  box-shadow: 0 0 12px #ff4d4d, 0 0 26px rgba(255, 77, 77, 0.6);
+  border-radius: 2px;
+  animation: dm-wall-flash 1.7s ease forwards;
+  z-index: 5;
+}
+@keyframes dm-wall-flash {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 말 */
+.dm-piece {
+  position: absolute;
+  width: calc(100% / 6);
+  height: calc(100% / 6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  pointer-events: none;
+  transition: left 0.32s ease, top 0.32s ease;
+  z-index: 4;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+.dm-piece.me { filter: drop-shadow(0 0 5px rgba(90, 150, 255, 0.9)); }
+.dm-piece.ai { filter: drop-shadow(0 0 5px rgba(255, 90, 90, 0.9)); transform: translateX(12%); }
+.dm-piece.bumped { animation: dm-bump 0.5s ease; }
+@keyframes dm-bump {
+  0%, 100% { margin-top: 0; }
+  25% { margin-left: -6px; }
+  50% { margin-left: 6px; }
+  75% { margin-left: -4px; }
+}
+
+/* ---------- 컨트롤 ---------- */
+
+.dm-controls {
+  margin-top: 14px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dm-msg { color: var(--text-dim); text-align: center; }
+.dm-msg.bump { color: #ff8383; font-weight: 700; }
+.dm-msg.chip { color: var(--accent); font-weight: 700; }
+.dm-msg.endmsg { color: var(--accent); font-weight: 700; }
+
+.dm-move-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.dm-move-bar .steps {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.step-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+  box-shadow: 0 0 6px rgba(255, 184, 0, 0.6);
+}
+.stop-btn {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 18px;
+  cursor: pointer;
+}
+.stop-btn:hover { border-color: var(--accent); }
+
+/* ---------- 주사위 오버레이 ---------- */
+
+.dm-die-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.dm-die-box {
+  text-align: center;
+  color: var(--text);
+}
+.dm-die-box p { margin-bottom: 12px; color: var(--text-dim); }
+.dm-die {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto;
+  background: linear-gradient(145deg, #fdfdfd, #cfcfd8);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: #16161f;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+  animation: dm-die-roll 1.05s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.dm-die span { animation: dm-die-num 1.05s steps(1); }
+@keyframes dm-die-roll {
+  0% { transform: translateY(-130px) rotate(0deg) scale(0.6); }
+  45% { transform: translateY(10px) rotate(380deg) scale(1.06); }
+  65% { transform: translateY(-14px) rotate(560deg); }
+  82% { transform: translateY(4px) rotate(700deg); }
+  100% { transform: translateY(0) rotate(720deg) scale(1); }
+}
+@keyframes dm-die-num {
+  0% { opacity: 0; }
+  60% { opacity: 0; }
+  61% { opacity: 1; }
+}
+
+/* ---------- 엔드카드 ---------- */
+
+.dm-endcard-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+.dm-endcard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 26px 34px;
+  text-align: center;
+  animation: dm-endcard-in 0.35s ease;
+}
+.dm-endcard h3 { font-size: 1.5rem; margin-bottom: 8px; color: var(--accent); }
+.dm-endcard p { color: var(--text-dim); margin-bottom: 18px; }
+.end-actions { display: flex; gap: 10px; justify-content: center; }
+@keyframes dm-endcard-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
