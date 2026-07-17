@@ -204,9 +204,11 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
                 ? '승리!'
                 : 'AI 승리'
             : state.phase === 'choose'
-              ? state.pending.length > 0
-                ? `${moverName} — 윷·모! 한 번 더 던집니다`
-                : `${moverName}의 말이 움직이는 던지기`
+              ? state.extraThrow
+                ? `${moverName} — 잡았다! 보너스 던지기`
+                : state.pending.length > 0
+                  ? `${moverName} — 윷·모! 한 번 더 던집니다`
+                  : `${moverName}의 말이 움직이는 던지기`
               : aiActing
                 ? 'AI가 말을 고르는 중…'
                 : selectedFrom !== null

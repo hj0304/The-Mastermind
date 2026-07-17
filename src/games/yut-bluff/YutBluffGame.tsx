@@ -53,27 +53,29 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
     setPhase('playing');
   }
 
-  // 라운드 결과 배너: 믿음/의심 결과를 크게 보여준다
+  // 연출 시퀀서: 결과 배너 → 주사위 굴림을 한 이펙트에서 순차 예약.
+  // (배너/굴림을 별도 이펙트로 두면 서로의 의존성 변경이 상대 타이머를
+  // 취소해 주사위 오버레이가 영영 안 사라지는 데드락이 생긴다)
   useEffect(() => {
     if (phase !== 'playing' || !state) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let delay = 0;
     if (state.history.length > bannerShownForLen.current) {
       bannerShownForLen.current = state.history.length;
       setBanner(state.history[state.history.length - 1]);
-      const timer = setTimeout(() => setBanner(null), 2000);
-      return () => clearTimeout(timer);
+      delay = 2000;
+      timers.push(setTimeout(() => setBanner(null), delay));
     }
-  }, [phase, state]);
-
-  // 굴림 연출: declare 단계 진입 시 1회 (결과 배너가 끝난 뒤)
-  useEffect(() => {
-    if (phase !== 'playing' || !state || state.result || banner) return;
-    if (state.phase === 'declare' && animShownForRound.current !== state.round) {
+    if (!state.result && state.phase === 'declare' && animShownForRound.current !== state.round) {
       animShownForRound.current = state.round;
-      setRollAnim(state.turn === HUMAN ? 'mine' : 'ai');
-      const timer = setTimeout(() => setRollAnim(null), state.turn === HUMAN ? 2000 : 1500);
-      return () => clearTimeout(timer);
+      const kind = state.turn === HUMAN ? 'mine' : 'ai';
+      const dur = state.turn === HUMAN ? 2000 : 1500;
+      timers.push(setTimeout(() => setRollAnim(kind), delay));
+      timers.push(setTimeout(() => setRollAnim(null), delay + dur));
     }
-  }, [phase, state, banner]);
+    if (timers.length === 0) return;
+    return () => timers.forEach(clearTimeout);
+  }, [phase, state]);
 
   // AI 자동 진행 (선언 또는 응답)
   useEffect(() => {
