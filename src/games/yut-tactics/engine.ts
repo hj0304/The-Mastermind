@@ -8,7 +8,8 @@
  * - **윷/모가 나오면 이동 전에 한 번 더 던진다** — 결과를 모아 두었다가
  *   원하는 순서·원하는 말에 나눠 적용한다 (일반 윷놀이 룰).
  * - **뒷도로 출발점 진입도 한 바퀴로 인정** — 1번 칸에서 뒷도를 받으면 완주(원작 룰).
- * - 상대 말을 잡으면 이동을 모두 마친 뒤 **한 번 더 던진다** (여러 번 잡아도 1회).
+ * - 상대 말을 잡으면 **그 즉시 한 번 더 던지고**, 그 결과는 남아 있던 결과들과
+ *   합쳐져 자유 순서로 적용된다 (잡을 때마다 보너스 던지기).
  * - 같은 칸의 내 말은 업힌다(함께 이동, 함께 잡힘). 쓸 수 없는 결과(뒷도인데 판에
  *   말이 없음)는 버려진다. 말 2개가 모두 완주하면 승리.
  * - 전통 윷판: 모서리(5·10)나 중앙(22)에 정확히 서면 다음 이동에서 지름길 선택 가능.
@@ -56,7 +57,7 @@ export interface YState {
   phase: 'choose' | 'move';
   /** 아직 적용하지 않은 던지기 결과들 (윷/모 연속 던지기로 누적) */
   pending: number[];
-  /** 잡기 보너스 — 남은 결과를 모두 쓴 뒤 한 번 더 던짐 (중복 잡기도 1회) */
+  /** 잡기 직후 — 다음 던지기가 보너스 던지기임을 표시 (UI용) */
   extraThrow: boolean;
   lastThrow: ThrowInfo | null;
   lastMoveDest: number | null;
@@ -182,15 +183,23 @@ export function resolveThrow(s: YState, picks: [number, number]): YState {
   const info: ThrowInfo = { picks, steps, mover: s.turn, passed: false, again };
 
   if (throwCount >= 500) {
-    return { ...s, pending: [], throwCount, lastThrow: info, result: { winner: null } };
+    return { ...s, pending: [], extraThrow: false, throwCount, lastThrow: info, result: { winner: null } };
   }
 
-  // 윷/모: 이동 전에 한 번 더 던진다 (결과 누적)
+  // 윷/모: 이동 전에 한 번 더 던진다 (결과 누적) — 잡기 보너스 플래그는 소진
   if (again) {
-    return { ...s, pending, throwCount, lastThrow: info };
+    return { ...s, pending, extraThrow: false, throwCount, lastThrow: info };
   }
 
-  const next: YState = { ...s, phase: 'move', pending, throwCount, lastThrow: info, lastMoveDest: null };
+  const next: YState = {
+    ...s,
+    phase: 'move',
+    pending,
+    extraThrow: false,
+    throwCount,
+    lastThrow: info,
+    lastMoveDest: null,
+  };
   if (moveOptions(next).length === 0) {
     // 쓸 수 있는 결과가 하나도 없음 (예: 뒷도뿐인데 판에 말이 없음) → 차례 넘김
     return {
@@ -250,7 +259,6 @@ export function applyMove(s: YState, opt: MoveOption): YState {
   const pieces: [YPiece[], YPiece[]] =
     mover === 0 ? [myPieces, oppPieces] : [oppPieces, myPieces];
   const pending = s.pending.filter((_, i) => i !== opt.stepIdx);
-  const extraThrow = s.extraThrow || caught;
 
   const won = myPieces.every((p) => p.pos === GOAL);
   if (won) {
@@ -265,16 +273,18 @@ export function applyMove(s: YState, opt: MoveOption): YState {
     };
   }
 
-  const next: YState = { ...s, pieces, pending, extraThrow, lastMoveDest: opt.dest };
+  const next: YState = { ...s, pieces, pending, lastMoveDest: opt.dest };
 
+  // 잡기: 남은 결과를 유지한 채 **즉시** 보너스 던지기 — 새 결과는 남은 결과와
+  // 합쳐져 자유 순서로 적용된다 (전통 룰)
+  if (caught) {
+    return { ...next, phase: 'choose', extraThrow: true };
+  }
   // 남은 결과가 있고 쓸 수 있으면 계속 이동
   if (pending.length > 0 && moveOptions(next).length > 0) {
-    return { ...next, phase: 'move' };
+    return { ...next, extraThrow: false, phase: 'move' };
   }
-  // 남은 결과가 있어도 쓸 수 없으면 버린다 → 턴 정리
-  if (extraThrow) {
-    return { ...next, pending: [], extraThrow: false, phase: 'choose' }; // 잡기 보너스 던지기
-  }
+  // 남은 결과가 없거나 쓸 수 없으면 버리고 차례 종료
   return {
     ...next,
     pending: [],
