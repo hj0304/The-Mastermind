@@ -3,6 +3,9 @@ import type { MonoState, PlayerId } from './engine.ts';
 import { createGame, currentPlayer, isTerminal, play, tileColor, winner } from './engine.ts';
 import { chooseAiMove, loadTendency, recordGameEnd, recordHumanPlay } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import MonochromeOnline from './MonochromeOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './monochrome.css';
 
 const HUMAN: PlayerId = 0;
@@ -22,6 +25,7 @@ export default function MonochromeGame({ onExit }: Props) {
   const [state, setState] = useState<MonoState | null>(null);
   const [aiThinking, setAiThinking] = useState(false);
   const [lastResultFlash, setLastResultFlash] = useState<string | null>(null);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const gameEndRecorded = useRef(false);
 
   function startGame() {
@@ -85,6 +89,22 @@ export default function MonochromeGame({ onExit }: Props) {
 
   // ---------- 렌더 ----------
 
+  if (online !== null && online !== 'panel') {
+    return <MonochromeOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="mono-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel
+          gameName="모노크롬"
+          onReady={(room) => setOnline(room)}
+          onCancel={() => setOnline(null)}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('monochrome');
     const memory = loadTendency().games;
@@ -108,7 +128,10 @@ export default function MonochromeGame({ onExit }: Props) {
             )}
           </div>
           <button className="primary-btn" onClick={startGame}>
-            대전 시작
+            AI 대전 시작
+          </button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>
+            ⚔️ 온라인 대전
           </button>
         </div>
       </div>
