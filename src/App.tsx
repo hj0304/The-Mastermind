@@ -14,6 +14,7 @@ import YutBluffGame from './games/yut-bluff/YutBluffGame.tsx';
 import JanusPokerGame from './games/janus-poker/JanusPokerGame.tsx';
 import DarkMazeGame from './games/dark-maze/DarkMazeGame.tsx';
 import LoopLineGame from './games/loop-line/LoopLineGame.tsx';
+import HiddenFormulaGame from './games/hidden-formula/HiddenFormulaGame.tsx';
 import { getRecord } from './stats.ts';
 import './App.css';
 
@@ -92,6 +93,9 @@ export default function App() {
   }
   if (activeGame === 'loop-line') {
     return <LoopLineGame onExit={() => setActiveGame(null)} />;
+  }
+  if (activeGame === 'hidden-formula') {
+    return <HiddenFormulaGame onExit={() => setActiveGame(null)} />;
   }
 
   return (
