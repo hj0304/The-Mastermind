@@ -131,7 +131,7 @@ export const GAMES: GameMeta[] = [
     name: '히든 포뮬러',
     tagline: '숨겨진 연산 규칙을 먼저 간파하는 자가 이긴다',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'planned',
+    status: 'playable',
     origin: '파라오코드 계열 귀납 추리 게임',
   },
 ];

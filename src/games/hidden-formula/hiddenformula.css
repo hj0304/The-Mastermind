@@ -1,0 +1,223 @@
+/* 히든 포뮬러 */
+
+.hf-root {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 12px 32px;
+}
+
+.hf-setup {
+  text-align: center;
+  padding: 24px 8px;
+}
+.hf-setup h2 { margin: 8px 0 12px; }
+.hf-rule-summary {
+  color: var(--text-dim);
+  line-height: 1.7;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+/* ---------- 상태 ---------- */
+
+.hf-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.hf-score {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 0.95rem;
+}
+.hf-score.me { color: #7db4ff; }
+.hf-score.ai { color: #ff8383; }
+.hf-score.answering { border-color: var(--accent); box-shadow: 0 0 10px rgba(255, 184, 0, 0.35); }
+.hf-round { color: var(--text-dim); font-size: 0.9rem; }
+
+/* ---------- 문제 ---------- */
+
+.hf-problem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: linear-gradient(145deg, #191925, #10101a);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 12px;
+}
+.hf-problem .num {
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+.hf-problem .q {
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow: 0 0 14px rgba(255, 184, 0, 0.6);
+  animation: hf-q-pulse 1.8s ease-in-out infinite;
+}
+@keyframes hf-q-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+/* ---------- 힌트 ---------- */
+
+.hf-hints {
+  min-height: 90px;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.hf-empty { color: var(--text-dim); text-align: center; padding: 24px 0; }
+.hf-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-family: 'Consolas', 'D2Coding', monospace;
+  font-size: 0.95rem;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.hf-hint.latest {
+  border-color: var(--accent);
+  animation: hf-hint-in 0.4s ease;
+}
+@keyframes hf-hint-in {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.hf-hint .idx {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  min-width: 18px;
+}
+.hf-hint .expr b { color: var(--accent); }
+
+/* ---------- 컨트롤 ---------- */
+
+.hf-controls {
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hf-msg { color: var(--text-dim); text-align: center; }
+.hf-msg.ai-buzz { color: #ff8383; font-weight: 800; font-size: 1.05rem; animation: hf-buzz-flash 0.5s ease; }
+@keyframes hf-buzz-flash {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.hf-numform { text-align: center; width: 100%; }
+.hf-prompt { color: var(--text-dim); margin-bottom: 10px; }
+.hf-input-row { display: flex; gap: 8px; justify-content: center; }
+.hf-input-row input {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 1.05rem;
+  width: 180px;
+  text-align: center;
+}
+.hf-input-row input:focus { outline: none; border-color: var(--accent); }
+
+.hf-window { width: 100%; text-align: center; }
+.hf-timer {
+  position: relative;
+  height: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.hf-timer-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff8a5c, var(--accent));
+  transition: width 0.25s linear;
+}
+.hf-timer-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+.hf-btn-row { display: flex; gap: 12px; justify-content: center; align-items: center; }
+.buzzer {
+  background: radial-gradient(circle at 35% 30%, #ff6b6b, #c92a2a);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 18px 34px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(201, 42, 42, 0.5), inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.08s ease;
+}
+.buzzer:active { transform: scale(0.93); }
+.buzzer:disabled {
+  filter: grayscale(0.9);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.hf-hint-msg { color: #ff8383; font-size: 0.82rem; margin-top: 10px; }
+
+.hf-roundend { text-align: center; }
+.hf-reveal { font-weight: 700; font-size: 1.05rem; margin-bottom: 6px; color: var(--accent); }
+.hf-rule-reveal { color: var(--text-dim); margin-bottom: 14px; }
+.hf-rule-reveal b { color: var(--text); }
+
+/* ---------- 엔드카드 ---------- */
+
+.hf-endcard-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+.hf-endcard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 26px 34px;
+  text-align: center;
+  animation: hf-endcard-in 0.35s ease;
+  max-width: 90vw;
+}
+.hf-endcard h3 { font-size: 1.5rem; margin-bottom: 8px; color: var(--accent); }
+.hf-endcard p { color: var(--text-dim); margin-bottom: 18px; }
+@keyframes hf-endcard-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
