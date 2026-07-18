@@ -107,7 +107,7 @@ export const GAMES: GameMeta[] = [
     name: '순환선',
     tagline: '철로를 이어 순환선을 완성하는 마지막 타일의 주인공이 돼라',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
-    status: 'planned',
+    status: 'playable',
     origin: '베니스 커넥션(Venice Connection)',
   },
   {
