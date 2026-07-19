@@ -56,6 +56,7 @@
 
 .ll-board-wrap { display: flex; justify-content: center; }
 .ll-board {
+  position: relative;
   display: grid;
   width: min(96vw, 590px);
   aspect-ratio: 13 / 9;
@@ -76,23 +77,73 @@
   color: inherit;
   font-size: clamp(0.7rem, 3vw, 1.3rem);
 }
-.ll-cell.station { background: rgba(255, 184, 0, 0.14); }
-.station-glyph { font-size: 0.95em; }
-.ll-cell.placed { background: rgba(140, 160, 190, 0.13); }
-.ll-cell.placed .tie {
-  width: 68%;
-  height: 46%;
-  border-radius: 3px;
-  background:
-    repeating-linear-gradient(90deg, #8b6f47 0 3px, transparent 3px 8px),
-    linear-gradient(0deg, transparent 28%, #9aa7b8 28% 40%, transparent 40% 60%, #9aa7b8 60% 72%, transparent 72%);
-  animation: ll-drop 0.3s ease;
+.ll-cell.station { background: rgba(255, 184, 0, 0.12); }
+.ll-cell.placed { background: rgba(140, 160, 190, 0.08); }
+
+/* ---------- 철로 그래픽 ---------- */
+.rail {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
+.rail-bed {
+  fill: none;
+  stroke: #6b5842;
+  stroke-width: 30;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rail-tie {
+  fill: #8b6f47;
+}
+.rail-line {
+  fill: none;
+  stroke: #c9d3e0;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rail-placed { animation: ll-drop 0.28s ease; }
+.rail-preview { opacity: 0.55; }
+.rail-preview .rail-bed { stroke: #3f6b47; }
+.rail-preview .rail-line { stroke: #78dc82; }
+.rail-loop .rail-bed { stroke: #7a5f2a; }
+.rail-loop .rail-line {
+  stroke: var(--accent);
+  filter: drop-shadow(0 0 4px rgba(255, 184, 0, 0.9));
+}
+.rail-station .rail-bed { stroke: #6b5842; }
+.station-roof { fill: rgba(255, 184, 0, 0.85); }
+.station-text {
+  fill: #16161f;
+  font-size: 15px;
+  font-weight: 900;
+}
+
 @keyframes ll-drop {
-  from { transform: scale(1.5); opacity: 0; }
+  from { transform: scale(1.35); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.ll-cell.loop { background: rgba(255, 184, 0, 0.1); }
+.ll-cell.loop .rail { animation: ll-loop-in 0.4s ease backwards; }
+@keyframes ll-loop-in {
+  from { transform: scale(0.5); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
 .ll-cell.last { box-shadow: inset 0 0 10px rgba(255, 184, 0, 0.5); }
+
+/* 완성된 순환선을 도는 기차 */
+.ll-train {
+  position: absolute;
+  font-size: clamp(0.8rem, 2.6vw, 1.3rem);
+  transform: translate(-50%, -50%);
+  transition: left 0.26s linear, top 0.26s linear;
+  pointer-events: none;
+  z-index: 3;
+  filter: drop-shadow(0 0 6px rgba(255, 184, 0, 0.9));
+}
+
 .ll-cell.pick { background: rgba(120, 220, 130, 0.28); }
 .ll-cell.pick::after {
   content: '';

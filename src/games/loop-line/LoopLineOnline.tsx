@@ -12,6 +12,7 @@ import {
   placedSet,
 } from './engine.ts';
 import type { NetRoom } from '../../net/room.ts';
+import { RailTile, StationTile, TrainOnLoop, openDirs } from './rail.tsx';
 import './loopline.css';
 import '../../net/online.css';
 
@@ -23,26 +24,6 @@ import '../../net/online.css';
 type LLAction = { kind: 'place'; line: number[] } | { kind: 'declare' } | { kind: 'giveup' };
 type NetMsg = { t: 'ready' } | { t: 'state'; s: LLState } | { t: 'act'; a: LLAction };
 
-function loopGlyphs(loop: number[]): Map<number, string> {
-  const map = new Map<number, string>();
-  const n = loop.length;
-  for (let i = 0; i < n; i++) {
-    const prev = loop[(i - 1 + n) % n];
-    const cur = loop[i];
-    const next = loop[(i + 1) % n];
-    const dirs = new Set([prev - cur, next - cur]);
-    const has = (a: number, b: number) => dirs.has(a) && dirs.has(b);
-    let g = '━';
-    if (has(-1, 1)) g = '━';
-    else if (has(-W, W)) g = '┃';
-    else if (has(1, W)) g = '┏';
-    else if (has(-1, W)) g = '┓';
-    else if (has(1, -W)) g = '┗';
-    else if (has(-1, -W)) g = '┛';
-    map.set(cur, g);
-  }
-  return map;
-}
 
 export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit: () => void }) {
   const me: PlayerId = room.isHost ? 0 : 1;
@@ -139,7 +120,7 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
 
   const myActs = moverOf(state) === me;
   const set = placedSet(state);
-  const glyphs = state.loop ? loopGlyphs(state.loop) : null;
+  const railSet = new Set([...set, ...picks]);
   const loopIndex = new Map<number, number>();
   if (state.loop) state.loop.forEach((c, i) => loopIndex.set(c, i));
   const picksValid = picks.length > 0 && isValidLine(set, picks, state.tilesLeft);
@@ -182,7 +163,7 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
             const isPlaced = set.has(cell);
             const isPick = picks.includes(cell);
             const pickable = canPick(cell);
-            const glyph = glyphs?.get(cell);
+            const inLoop = loopIndex.has(cell);
             const isLast = state.lastMove?.includes(cell);
             return (
               <button
@@ -193,23 +174,24 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
                   isPlaced && !isStation ? 'placed' : '',
                   isPick ? 'pick' : '',
                   pickable && !isPick ? 'pickable' : '',
-                  glyph ? 'loop' : '',
-                  isLast && !glyph ? 'last' : '',
+                  inLoop ? 'loop' : '',
+                  isLast && !inLoop ? 'last' : '',
                 ].join(' ')}
-                style={glyph ? { animationDelay: `${(loopIndex.get(cell) ?? 0) * 90}ms` } : undefined}
+                style={inLoop ? { animationDelay: `${(loopIndex.get(cell) ?? 0) * 60}ms` } : undefined}
                 disabled={!pickable}
                 onClick={() => setPicks((p) => (p.includes(cell) ? p.filter((c) => c !== cell) : [...p, cell]))}
               >
-                {glyph ? (
-                  <span className="rail-glyph">{glyph}</span>
-                ) : isStation ? (
-                  <span className="station-glyph">🚉</span>
+                {isStation ? (
+                  <StationTile />
                 ) : isPlaced ? (
-                  <span className="tie" />
+                  <RailTile dirs={openDirs(cell, railSet)} variant={inLoop ? 'loop' : 'placed'} />
+                ) : isPick ? (
+                  <RailTile dirs={openDirs(cell, railSet)} variant="preview" />
                 ) : null}
               </button>
             );
           })}
+          {state.loop && <TrainOnLoop loop={state.loop} cellPct={100 / W} />}
         </div>
       </div>
 
