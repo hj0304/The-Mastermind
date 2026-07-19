@@ -14,6 +14,9 @@ import {
 } from './engine.ts';
 import { chooseAiAction, recordGameEnd } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import LoopLineOnline from './LoopLineOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './loopline.css';
 
 const HUMAN: PlayerId = 0;
@@ -49,6 +52,7 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
   const [picks, setPicks] = useState<number[]>([]);
   const [aiThinking, setAiThinking] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
   const humanDeclared = useRef(false);
 
@@ -140,6 +144,25 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
     setState(applyGiveUp(state));
   }
 
+  if (online !== null && online !== 'panel') {
+    return <LoopLineOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="ll-root">
+        <header className="game-header">
+          <button className="back-btn" onClick={onExit}>← 로비</button>
+          <span className="game-title">순환선</span>
+        </header>
+        <OnlinePanel
+          gameName="순환선"
+          onReady={(room) => setOnline(room)}
+          onCancel={() => setOnline(null)}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('loop-line');
     return (
@@ -161,7 +184,8 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
             </span>
             <span className="memory-line">AI는 남은 모든 수를 완전 탐색해 필승 경로와 불가능 국면을 정확히 계산합니다</span>
           </div>
-          <button className="primary-btn" onClick={startGame}>대전 시작</button>
+          <button className="primary-btn" onClick={startGame}>AI 대전 시작</button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>
         </div>
       </div>
     );
