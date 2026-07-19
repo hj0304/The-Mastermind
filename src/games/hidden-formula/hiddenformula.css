@@ -143,6 +143,42 @@
 }
 .hf-input-row input:focus { outline: none; border-color: var(--accent); }
 
+/* 버저 후 답변 제한 시간 */
+.hf-answer-clock {
+  position: relative;
+  height: 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 0 auto 12px;
+  max-width: 260px;
+}
+.hf-answer-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff8a5c, var(--accent));
+  transition: width 0.2s linear;
+}
+.hf-answer-clock.urgent .hf-answer-bar {
+  background: linear-gradient(90deg, #c92a2a, #ff6b6b);
+  animation: hf-urgent 0.5s ease-in-out infinite;
+}
+@keyframes hf-urgent {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.hf-answer-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
 .hf-window { width: 100%; text-align: center; }
 .hf-timer {
   position: relative;

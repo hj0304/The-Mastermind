@@ -115,8 +115,8 @@ export default function MonochromeGame({ onExit }: Props) {
           <h2>모노크롬</h2>
           <p className="mono-rule-summary">
             0~8 타일 아홉 장(짝수=흑, 홀수=백). 선이 타일을 엎어 내면 상대에겐 <b>색만</b> 보입니다.
-            높은 숫자가 승점 1점, 승자가 다음 선. 9라운드 후 승점이 높으면 승리 — 숫자는 끝까지
-            공개되지 않습니다.
+            높은 숫자가 승점 1점, 승자가 다음 선. 단 <b>0은 8을 잡습니다</b> — 최약체가 최강자를
+            무너뜨리는 한 수. 9라운드 후 승점이 높으면 승리 — 숫자는 끝까지 공개되지 않습니다.
           </p>
           <div className="setup-stats">
             <span className="extreme-tag">EXTREME AI</span>

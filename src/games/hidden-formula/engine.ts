@@ -12,6 +12,8 @@ export type PlayerId = 0 | 1;
 export const ROUNDS = 11;
 export const MAX_HINTS = 16;
 export const WINDOW_SECONDS = 60;
+/** 버저를 누른 뒤 정답을 말해야 하는 제한 시간 — 넘기면 오답 처리 */
+export const ANSWER_SECONDS = 10;
 export const MAX_NUM = 999999;
 
 // ---------- 규칙 은행 ----------
@@ -196,6 +198,16 @@ export function submitAnswer(s: HFState, ans: string): HFState {
     return timedOut;
   }
   return { ...s, scores, wrongBuzzed, phase: 'window', answerer: null };
+}
+
+/**
+ * 버저를 누르고 제한 시간 안에 답하지 못함 → 오답과 동일 처리
+ * (-1점, 기회는 상대에게).
+ */
+export function answerTimeout(s: HFState): HFState {
+  if (s.phase !== 'answer' || s.answerer === null) throw new Error('bad phase');
+  // 빈 답은 어떤 규칙의 결과와도 같을 수 없으므로 오답 경로를 그대로 탄다
+  return submitAnswer(s, ' timeout');
 }
 
 /** 제한 시간 종료(또는 양쪽 오답) → 다음 힌트 또는 라운드 종료 */

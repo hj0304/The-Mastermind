@@ -19,6 +19,19 @@ export function tileColor(n: number): TileColor {
   return n % 2 === 0 ? 'black' : 'white';
 }
 
+/**
+ * 타일 승부 비교 — a가 이기면 1, 지면 -1, 같으면 0.
+ *
+ * 기본은 큰 숫자가 이기지만, **최약체 0이 최강자 8을 잡는다**(구룡투의 순환 상성).
+ * 8을 무적이 아니게 만들어 0을 버리는 패가 아니라 노림수로 바꾸는 규칙.
+ */
+export function compareTiles(a: number, b: number): number {
+  if (a === b) return 0;
+  if (a === 0 && b === 8) return 1;
+  if (a === 8 && b === 0) return -1;
+  return a > b ? 1 : -1;
+}
+
 export interface RoundRecord {
   leader: PlayerId;
   /** [플레이어0 타일, 플레이어1 타일] */
@@ -97,8 +110,8 @@ export function play(s: MonoState, tile: number): MonoState {
   const followerTile = tile;
   const tiles: [number, number] =
     s.leader === 0 ? [leaderTile, followerTile] : [followerTile, leaderTile];
-  const roundWinner: PlayerId | null =
-    tiles[0] === tiles[1] ? null : tiles[0] > tiles[1] ? 0 : 1;
+  const cmp = compareTiles(tiles[0], tiles[1]);
+  const roundWinner: PlayerId | null = cmp === 0 ? null : cmp > 0 ? 0 : 1;
 
   const scores: [number, number] = [...s.scores];
   if (roundWinner !== null) scores[roundWinner] += 1;
@@ -137,14 +150,15 @@ export interface OppHandCandidate {
 export function opponentHandDistribution(s: MonoState, viewer: PlayerId): OppHandCandidate[] {
   const opp = (1 - viewer) as PlayerId;
   const records = s.history.slice(9 * s.overtime);
-  interface Constraint { color: TileColor; cmp: 'lt' | 'gt' | 'eq'; ref: number }
+  // 승패는 숫자 대소가 아니라 compareTiles 기준이다(0이 8을 이기므로).
+  interface Constraint { color: TileColor; cmp: 'won' | 'lost' | 'eq'; ref: number }
   const constraints: Constraint[] = [];
   for (const r of records) {
     const oppTile = r.tiles[opp];
     const myTile = r.tiles[viewer];
     constraints.push({
       color: tileColor(oppTile),
-      cmp: r.winner === null ? 'eq' : oppTile > myTile ? 'gt' : 'lt',
+      cmp: r.winner === null ? 'eq' : r.winner === opp ? 'won' : 'lost',
       ref: myTile,
     });
   }
@@ -166,8 +180,8 @@ export function opponentHandDistribution(s: MonoState, viewer: PlayerId): OppHan
       if (used[n]) continue;
       if (tileColor(n) !== c.color) continue;
       if (c.cmp === 'eq' && n !== c.ref) continue;
-      if (c.cmp === 'gt' && n <= c.ref) continue;
-      if (c.cmp === 'lt' && n >= c.ref) continue;
+      if (c.cmp === 'won' && compareTiles(n, c.ref) <= 0) continue;
+      if (c.cmp === 'lost' && compareTiles(n, c.ref) >= 0) continue;
       used[n] = true;
       assign(i + 1);
       used[n] = false;
