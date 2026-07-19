@@ -67,6 +67,20 @@
 }
 @keyframes online-spin { to { transform: rotate(360deg); } }
 
+.online-slow {
+  background: rgba(255, 184, 0, 0.08);
+  border: 1px solid rgba(255, 184, 0, 0.35);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.online-slow b { color: var(--accent); display: block; margin-bottom: 6px; }
+.online-slow ul { margin: 0; padding-left: 16px; }
+.online-slow li { margin-bottom: 4px; }
+
 .online-cancel {
   background: none;
   border: none;

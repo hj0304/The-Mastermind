@@ -1,15 +1,16 @@
 /**
- * 온라인 멀티플레이 전송 계층 — 서버리스 WebRTC (Trystero, nostr 시그널링).
- * GitHub Pages 정적 배포 그대로 사용 가능. 방 코드로 1:1 연결.
+ * 온라인 멀티플레이 전송 계층의 공용 인터페이스와 방 코드 유틸.
+ *
+ * 실제 전송은 relayRoom.ts(공개 nostr 릴레이 경유)가 담당한다.
+ * 처음에는 WebRTC P2P(Trystero)를 썼지만, 서로 다른 네트워크의 두 사람은
+ * NAT 때문에 직결이 자주 실패했다(같은 기기의 두 탭만 항상 성공). 이를
+ * 해결하려면 TURN 중계 서버가 필요한데 쓸 만한 TURN은 전부 계정이 필요해,
+ * 가입 없이 동작하는 릴레이 방식으로 전환했다. 자세한 배경은 relayRoom.ts 참조.
  *
  * 설계: 방을 만든 쪽이 호스트(좌석 0, 엔진 실행 권위), 참가자가 게스트(좌석 1).
- * 게임별 메시지는 msg 채널 하나로 주고받는다(JSON 직렬화 가능해야 함).
  */
 
-import { joinRoom } from 'trystero';
-import type { JsonValue, Room } from 'trystero';
-
-const APP_ID = 'the-mastermind-nan2026';
+import { openRelayRoom } from './relayRoom.ts';
 
 /** 헷갈리는 문자(0/O, 1/I) 제외 */
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -40,46 +41,5 @@ export interface NetRoom {
 }
 
 export function openRoom(code: string, isHost: boolean): NetRoom {
-  const room: Room = joinRoom({ appId: APP_ID }, `mm-${code}`);
-  const action = room.makeAction<JsonValue>('m');
-
-  const peers = new Set<string>();
-  const msgCbs = new Set<(msg: unknown) => void>();
-  const peerCbs = new Set<(count: number) => void>();
-
-  action.onMessage = (data) => {
-    for (const cb of msgCbs) cb(data);
-  };
-  room.onPeerJoin = (id) => {
-    peers.add(id);
-    for (const cb of peerCbs) cb(peers.size);
-  };
-  room.onPeerLeave = (id) => {
-    peers.delete(id);
-    for (const cb of peerCbs) cb(peers.size);
-  };
-
-  return {
-    code,
-    isHost,
-    send: (msg) => {
-      action.send(msg as JsonValue).catch(() => {
-        // 연결 전/전송 실패는 무시 (view 재전송 경로가 복구)
-      });
-    },
-    onMsg: (cb) => {
-      msgCbs.add(cb);
-      return () => msgCbs.delete(cb);
-    },
-    onPeers: (cb) => {
-      peerCbs.add(cb);
-      return () => peerCbs.delete(cb);
-    },
-    peerCount: () => peers.size,
-    leave: () => {
-      room.leave().catch(() => {
-        // ignore
-      });
-    },
-  };
+  return openRelayRoom(code, isHost);
 }
