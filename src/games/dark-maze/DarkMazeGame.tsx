@@ -14,6 +14,9 @@ import {
 } from './engine.ts';
 import { chooseAiStep, recordGameEnd, recordHumanTurn } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import DarkMazeOnline from './DarkMazeOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './darkmaze.css';
 
 const HUMAN: PlayerId = 0;
@@ -44,6 +47,7 @@ export default function DarkMazeGame({ onExit }: { onExit: () => void }) {
   const [dieAnim, setDieAnim] = useState<{ value: number; by: PlayerId } | null>(null);
   /** 충돌/획득 연출 (벽 플래시 + 메시지) */
   const [flash, setFlash] = useState<{ kind: 'bump' | 'chip'; by: PlayerId; edge?: number; cell?: number } | null>(null);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
 
   function startGame() {
@@ -142,6 +146,22 @@ export default function DarkMazeGame({ onExit }: { onExit: () => void }) {
     setState(applyStop(state!));
   }
 
+  if (online !== null && online !== 'panel') {
+    return <DarkMazeOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="dm-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel
+          gameName="암전 미궁"
+          onReady={(room) => setOnline(room)}
+          onCancel={() => setOnline(null)}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('dark-maze');
     return (
@@ -162,7 +182,8 @@ export default function DarkMazeGame({ onExit }: { onExit: () => void }) {
             </span>
             <span className="memory-line">AI는 드러난 벽과 열린 길을 완벽 기억하고, 당신의 기억력 수준에 맞춰 위험을 조절합니다</span>
           </div>
-          <button className="primary-btn" onClick={startGame}>대전 시작</button>
+          <button className="primary-btn" onClick={startGame}>AI 대전 시작</button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>
         </div>
       </div>
     );

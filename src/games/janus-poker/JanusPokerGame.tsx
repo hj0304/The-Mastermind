@@ -14,6 +14,9 @@ import {
   recordResponse,
 } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import JanusPokerOnline from './JanusPokerOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './janus.css';
 
 const HUMAN: PlayerId = 0;
@@ -30,6 +33,7 @@ export default function JanusPokerGame({ onExit }: { onExit: () => void }) {
   const [level, setLevel] = useState(1);
   const [peek, setPeek] = useState(false);
   const [aiActing, setAiActing] = useState(false);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
   const learnedHand = useRef(0);
 
@@ -112,6 +116,22 @@ export default function JanusPokerGame({ onExit }: { onExit: () => void }) {
     setPickedFace(null);
   }
 
+  if (online !== null && online !== 'panel') {
+    return <JanusPokerOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="jp-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel
+          gameName="야누스 포커"
+          onReady={(room) => setOnline(room)}
+          onCancel={() => setOnline(null)}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('janus-poker');
     return (
@@ -133,7 +153,8 @@ export default function JanusPokerGame({ onExit }: { onExit: () => void }) {
             </span>
             <span className="memory-line">AI는 공개된 카드를 카운팅하고 당신의 면 선택·폴드 성향을 학습합니다</span>
           </div>
-          <button className="primary-btn" onClick={startGame}>대전 시작</button>
+          <button className="primary-btn" onClick={startGame}>AI 대전 시작</button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>
         </div>
       </div>
     );
