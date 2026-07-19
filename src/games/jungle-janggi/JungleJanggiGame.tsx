@@ -3,6 +3,9 @@ import type { JState, Move, PieceType, PlayerId } from './engine.ts';
 import { COLS, ROWS, applyMove, createGame, idx, legalMoves } from './engine.ts';
 import { chooseAiMove } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import JungleJanggiOnline from './JungleJanggiOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './jungle.css';
 
 const HUMAN: PlayerId = 0;
@@ -32,6 +35,7 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
   const [selection, setSelection] = useState<Selection>(null);
   const [aiThinking, setAiThinking] = useState(false);
   const [aiInfo, setAiInfo] = useState<string | null>(null);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
 
   function startGame() {
@@ -110,6 +114,22 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
     );
   }
 
+  if (online !== null && online !== 'panel') {
+    return <JungleJanggiOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="jj-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel
+          gameName="밀림장기"
+          onReady={(room) => setOnline(room)}
+          onCancel={() => setOnline(null)}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('jungle-janggi');
     return (
@@ -131,7 +151,10 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
             <span className="memory-line">완전정보 게임 — AI는 수십만 수를 앞서 읽습니다</span>
           </div>
           <button className="primary-btn" onClick={startGame}>
-            대전 시작
+            AI 대전 시작
+          </button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>
+            ⚔️ 온라인 대전
           </button>
         </div>
       </div>
