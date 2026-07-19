@@ -11,6 +11,9 @@ import {
 } from './engine.ts';
 import { chooseAiAction, loadOpponentModel, recordGameEnd, recordHandObservations } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import BlindPokerOnline from './BlindPokerOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './blindpoker.css';
 
 const HUMAN: PlayerId = 0;
@@ -25,6 +28,7 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<Phase>('setup');
   const [state, setState] = useState<BpState | null>(null);
   const [aiThinking, setAiThinking] = useState(false);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recordedHands = useRef(0);
   const gameRecorded = useRef(false);
 
@@ -79,6 +83,22 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
     setState(nextHand(state));
   }
 
+  if (online !== null && online !== 'panel') {
+    return <BlindPokerOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="bp-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel
+          gameName="블라인드 포커"
+          onReady={(room) => setOnline(room)}
+          onCancel={() => setOnline(null)}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     return (
       <div className="bp-root">
@@ -103,7 +123,10 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
             )}
           </div>
           <button className="primary-btn" onClick={startGame}>
-            대전 시작
+            AI 대전 시작
+          </button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>
+            ⚔️ 온라인 대전
           </button>
         </div>
       </div>
