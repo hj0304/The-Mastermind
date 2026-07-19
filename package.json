@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "nostr-tools": "^2.23.12",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "trystero": "^0.25.3"
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.0",

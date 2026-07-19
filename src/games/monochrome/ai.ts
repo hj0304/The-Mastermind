@@ -12,6 +12,7 @@
 
 import type { MonoState, PlayerId, TileColor, OppHandCandidate } from './engine.ts';
 import {
+  compareTiles,
   currentPlayer,
   legalMoves,
   opponentHandDistribution,
@@ -104,7 +105,7 @@ function conditionOnColor(probs: number[], color: TileColor): number[] {
 function rationalFollowerResponse(hand: number[], belief: number[], threshold = 0.65): number {
   const sorted = [...hand].sort((a, b) => a - b);
   for (const t of sorted) {
-    const winP = belief.reduce((acc, p, n) => acc + (t > n ? p : 0), 0);
+    const winP = belief.reduce((acc, p, n) => acc + (compareTiles(t, n) > 0 ? p : 0), 0);
     if (winP >= threshold) return t;
   }
   return sorted[0]; // 이길 가망 없음 → 최저 타일 버리기
@@ -157,7 +158,7 @@ function minimaxCore(
     for (const a of aHand) {
       let worst = Infinity;
       for (const b of bHand) {
-        const roundDiff = a > b ? 1 : a < b ? -1 : 0;
+        const roundDiff = compareTiles(a, b);
         const nextALeader = roundDiff > 0 ? true : roundDiff < 0 ? false : aIsLeader;
         const v = minimaxValue(
           aHand.filter((x) => x !== a),
@@ -176,7 +177,7 @@ function minimaxCore(
   for (const b of bHand) {
     let best = -Infinity;
     for (const a of aHand) {
-      const roundDiff = a > b ? 1 : a < b ? -1 : 0;
+      const roundDiff = compareTiles(a, b);
       const nextALeader = roundDiff > 0 ? true : roundDiff < 0 ? false : false;
       const v = minimaxValue(
         aHand.filter((x) => x !== a),
@@ -214,7 +215,7 @@ function chooseEndgameExact(
         const options = cand.hand.filter((n) => tileColor(n) === pendingColor);
         if (options.length === 0) continue;
         for (const x of options) {
-          const roundDiff = t > x ? 1 : t < x ? -1 : 0;
+          const roundDiff = compareTiles(t, x);
           const meLeadsNext = roundDiff > 0 ? true : roundDiff < 0 ? false : s.leader === me;
           const v = minimaxValue(
             hand.filter((y) => y !== t),
@@ -231,7 +232,7 @@ function chooseEndgameExact(
           tileColor(t),
         );
         const r = rationalFollowerResponse(cand.hand, oppBeliefAboutMe);
-        const roundDiff = t > r ? 1 : t < r ? -1 : 0;
+        const roundDiff = compareTiles(t, r);
         const meLeadsNext = roundDiff > 0 ? true : roundDiff < 0 ? false : true;
         const v = minimaxValue(
           hand.filter((y) => y !== t),
@@ -289,7 +290,7 @@ function chooseEasy(s: MonoState, hand: number[]): number {
   if (s.pending !== null && Math.random() < 0.3) {
     const c = tileColor(s.pending);
     const guess = c === 'black' ? 5 : 4;
-    const above = hand.filter((t) => t > guess);
+    const above = hand.filter((t) => compareTiles(t, guess) > 0);
     if (above.length > 0) return Math.min(...above);
   }
   return pickRandom(hand);
@@ -317,7 +318,7 @@ function chooseAsFollower(
   let best = hand[0];
   let bestU = -Infinity;
   for (const t of hand) {
-    const winP = belief.reduce((acc, p, n) => acc + (t > n ? p : 0), 0);
+    const winP = belief.reduce((acc, p, n) => acc + (compareTiles(t, n) > 0 ? p : 0), 0);
     const drawP = belief[t] ?? 0;
     const cost = Math.pow(t / 8, 2) * 0.55 * costScale;
     const u = winP + 0.15 * drawP - cost;
@@ -350,7 +351,7 @@ function chooseAsLeader(
     let ev = 0;
     for (const cand of dist) {
       const r = rationalFollowerResponse(cand.hand, myColorBelief);
-      const roundScore = t > r ? 1 : t < r ? -1 : 0;
+      const roundScore = compareTiles(t, r);
       // 마진 경제: 내가 쓴 타일 대비 상대가 쓴 타일 (상대 고급 타일을 빼내면 이득)
       const economy = (r - t) * 0.06 * costScale;
       ev += cand.weight * (roundScore + economy);

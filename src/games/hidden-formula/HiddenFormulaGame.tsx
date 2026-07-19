@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { HFState, PlayerId } from './engine.ts';
 import {
+  ANSWER_SECONDS,
   MAX_HINTS,
   ROUNDS,
   WINDOW_SECONDS,
   advanceHint,
+  answerTimeout,
   buzz,
   createGame,
   nextRound,
@@ -35,6 +37,8 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<Phase>('setup');
   const [state, setState] = useState<HFState | null>(null);
   const [deadline, setDeadline] = useState<number | null>(null);
+  /** 버저를 누른 뒤 답변 제한 시간 마감 시각 */
+  const [answerDeadline, setAnswerDeadline] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const [numInput, setNumInput] = useState('');
   const [ansInput, setAnsInput] = useState('');
@@ -95,6 +99,36 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
     }, 250);
     return () => clearInterval(iv);
   }, [phase, state, deadline]);
+
+  // 버저 후 답변 제한 시간 — 진입 시 마감 설정, 벗어나면 해제
+  useEffect(() => {
+    if (!state) return;
+    if (state.phase === 'answer') {
+      setAnswerDeadline((d) => d ?? Date.now() + ANSWER_SECONDS * 1000);
+    } else {
+      setAnswerDeadline(null);
+    }
+  }, [state]);
+
+  // 답변 카운트다운 + 시간 초과 → 오답 처리
+  useEffect(() => {
+    if (phase !== 'playing' || !state || state.phase !== 'answer' || !answerDeadline) return;
+    const iv = setInterval(() => {
+      setNow(Date.now());
+      if (Date.now() >= answerDeadline) {
+        setState((s) => {
+          if (!s || s.phase !== 'answer') return s;
+          try {
+            return answerTimeout(s);
+          } catch {
+            return s;
+          }
+        });
+        setAnsInput('');
+      }
+    }, 200);
+    return () => clearInterval(iv);
+  }, [phase, state, answerDeadline]);
 
   // AI 시퀀서
   useEffect(() => {
@@ -228,9 +262,9 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
           <p className="hf-rule-summary">
             <b>X ? Y</b> — 물음표에 숨은 연산 규칙을 추리하는 버저 게임. 번갈아 수를
             제시하면 그 두 수를 숨은 규칙에 대입한 <b>힌트</b>가 공개됩니다. 규칙을
-            간파했다면 <b>버저</b>를 누르고 문제의 정답을 제시하세요 — 정답 <b>+1점</b>,
-            오답 <b>−1점</b>(기회는 상대에게). 힌트는 문제당 최대 {MAX_HINTS}개,
-            총 {ROUNDS}라운드 승점 승부!
+            간파했다면 <b>버저</b>를 누르고 <b>{ANSWER_SECONDS}초 안에</b> 정답을 제시하세요 —
+            정답 <b>+1점</b>, 오답이거나 시간을 넘기면 <b>−1점</b>(기회는 상대에게).
+            힌트는 문제당 최대 {MAX_HINTS}개, 총 {ROUNDS}라운드 승점 승부!
           </p>
           <div className="setup-stats">
             <span className="extreme-tag">EXTREME AI</span>
@@ -248,6 +282,9 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
   if (!state) return null;
 
   const remainSec = deadline ? Math.max(0, Math.ceil((deadline - now) / 1000)) : WINDOW_SECONDS;
+  const answerRemain = answerDeadline
+    ? Math.max(0, (answerDeadline - now) / 1000)
+    : ANSWER_SECONDS;
   const myNumTurn = (state.phase === 'num1' || state.phase === 'num2') && numTurn(state) === HUMAN;
 
   return (
@@ -345,6 +382,7 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
           state.answerer === HUMAN ? (
             <div className="hf-numform">
               <p className="hf-prompt">정답: <b>{state.X} ? {state.Y}</b> = ?</p>
+              <AnswerClock remain={answerRemain} />
               <div className="hf-input-row">
                 <input
                   autoFocus
@@ -357,7 +395,10 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
               </div>
             </div>
           ) : (
-            <p className="hf-msg ai-buzz">🔔 AI가 정답을 말하는 중…</p>
+            <div className="hf-numform">
+              <p className="hf-msg ai-buzz">🔔 AI가 정답을 말하는 중…</p>
+              <AnswerClock remain={answerRemain} />
+            </div>
           )
         ) : null}
       </div>
@@ -377,6 +418,17 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** 버저 후 답변 제한 시간 — 막판 3초는 붉게 경고 */
+function AnswerClock({ remain }: { remain: number }) {
+  const pct = Math.max(0, Math.min(100, (remain / ANSWER_SECONDS) * 100));
+  return (
+    <div className={`hf-answer-clock ${remain <= 3 ? 'urgent' : ''}`}>
+      <div className="hf-answer-bar" style={{ width: `${pct}%` }} />
+      <span className="hf-answer-num">{Math.ceil(remain)}초 안에 답하세요</span>
     </div>
   );
 }
