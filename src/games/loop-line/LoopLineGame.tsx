@@ -17,6 +17,7 @@ import { getRecord, recordResult } from '../../stats.ts';
 import LoopLineOnline from './LoopLineOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
+import { RailTile, StationTile, TrainOnLoop, openDirs } from './rail.tsx';
 import './loopline.css';
 
 const HUMAN: PlayerId = 0;
@@ -25,26 +26,6 @@ const AI: PlayerId = 1;
 type Phase = 'setup' | 'playing' | 'done';
 
 /** 완성된 순환선 렌더용 글리프 */
-function loopGlyphs(loop: number[]): Map<number, string> {
-  const map = new Map<number, string>();
-  const n = loop.length;
-  for (let i = 0; i < n; i++) {
-    const prev = loop[(i - 1 + n) % n];
-    const cur = loop[i];
-    const next = loop[(i + 1) % n];
-    const dirs = new Set([prev - cur, next - cur]);
-    const has = (a: number, b: number) => dirs.has(a) && dirs.has(b);
-    let g = '━';
-    if (has(-1, 1)) g = '━';
-    else if (has(-W, W)) g = '┃';
-    else if (has(1, W)) g = '┏';
-    else if (has(-1, W)) g = '┓';
-    else if (has(1, -W)) g = '┗';
-    else if (has(-1, -W)) g = '┛';
-    map.set(cur, g);
-  }
-  return map;
-}
 
 export default function LoopLineGame({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<Phase>('setup');
@@ -194,7 +175,7 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
   if (!state) return null;
 
   const set = placedSet(state);
-  const glyphs = state.loop ? loopGlyphs(state.loop) : null;
+  const railSet = new Set([...set, ...picks]);
   const loopIndex = new Map<number, number>();
   if (state.loop) state.loop.forEach((c, i) => loopIndex.set(c, i));
   const picksValid = picks.length > 0 && isValidLine(set, picks, state.tilesLeft);
@@ -233,7 +214,7 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
             const isPlaced = set.has(cell);
             const isPick = picks.includes(cell);
             const pickable = canPick(cell);
-            const glyph = glyphs?.get(cell);
+            const inLoop = loopIndex.has(cell);
             const isLast = state.lastMove?.includes(cell);
             return (
               <button
@@ -244,23 +225,24 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
                   isPlaced && !isStation ? 'placed' : '',
                   isPick ? 'pick' : '',
                   pickable && !isPick ? 'pickable' : '',
-                  glyph ? 'loop' : '',
-                  isLast && !glyph ? 'last' : '',
+                  inLoop ? 'loop' : '',
+                  isLast && !inLoop ? 'last' : '',
                 ].join(' ')}
-                style={glyph ? { animationDelay: `${(loopIndex.get(cell) ?? 0) * 90}ms` } : undefined}
+                style={inLoop ? { animationDelay: `${(loopIndex.get(cell) ?? 0) * 60}ms` } : undefined}
                 disabled={!pickable}
                 onClick={() => togglePick(cell)}
               >
-                {glyph ? (
-                  <span className="rail-glyph">{glyph}</span>
-                ) : isStation ? (
-                  <span className="station-glyph">🚉</span>
+                {isStation ? (
+                  <StationTile />
                 ) : isPlaced ? (
-                  <span className="tie" />
+                  <RailTile dirs={openDirs(cell, railSet)} variant={inLoop ? 'loop' : 'placed'} />
+                ) : isPick ? (
+                  <RailTile dirs={openDirs(cell, railSet)} variant="preview" />
                 ) : null}
               </button>
             );
           })}
+          {state.loop && <TrainOnLoop loop={state.loop} cellPct={100 / W} />}
         </div>
       </div>
 
