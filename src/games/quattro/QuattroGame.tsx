@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { PlayerId, QCard, QState } from './engine.ts';
+import type { PlayerId, QState } from './engine.ts';
 import {
   canDecline,
   cardSum,
@@ -15,14 +15,14 @@ import {
 } from './engine.ts';
 import { aiChooseAction, aiChooseOpen, aiWantsMulligan } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import { CardBack, CardView, COLOR_NAME } from './cards.tsx';
+import QuattroOnline from './QuattroOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './quattro.css';
 
 const HUMAN: PlayerId = 0;
 const AI: PlayerId = 1;
-
-const COLOR_NAME: Record<QCard['color'], string> = {
-  R: '빨강', B: '파랑', Y: '노랑', G: '초록', K: '검정',
-};
 
 type Phase = 'setup' | 'playing' | 'done';
 
@@ -32,6 +32,7 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [aiThinking, setAiThinking] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
 
   function startGame() {
@@ -134,6 +135,22 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
 
   // ---------- 렌더 ----------
 
+  if (online !== null && online !== 'panel') {
+    return <QuattroOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="qt-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel
+          gameName="콰트로"
+          onReady={(room) => setOnline(room)}
+          onCancel={() => setOnline(null)}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('quattro');
     return (
@@ -155,7 +172,10 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
             <span className="memory-line">AI는 공개된 교환 기록으로 가상 플레이어의 손패를 추적합니다</span>
           </div>
           <button className="primary-btn" onClick={startGame}>
-            대전 시작
+            AI 대전 시작
+          </button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>
+            ⚔️ 온라인 대전
           </button>
         </div>
       </div>
@@ -304,36 +324,6 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
   );
 }
 
-function CardView({
-  card,
-  opened,
-  selectable,
-  selected,
-  small,
-  onClick,
-}: {
-  card: QCard;
-  opened?: boolean;
-  selectable?: boolean;
-  selected?: boolean;
-  small?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      className={`qt-card c-${card.color} ${opened ? 'opened' : ''} ${selectable ? 'selectable' : ''} ${selected ? 'selected' : ''} ${small ? 'small' : ''}`}
-      onClick={onClick}
-      disabled={!onClick}
-    >
-      {card.num}
-      {opened && <span className="open-mark">공개</span>}
-    </button>
-  );
-}
-
-function CardBack() {
-  return <span className="qt-card back" />;
-}
 
 function GameHeader({ onExit }: { onExit: () => void }) {
   return (
