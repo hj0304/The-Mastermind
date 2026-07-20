@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { M2State, PlayerId } from './engine.ts';
-import { GAUGE_LABELS, bidColor, createGame, currentPlayer, gaugeTier, play } from './engine.ts';
+import { bidColor, createGame, currentPlayer, play } from './engine.ts';
 import { chooseAiBid, recordContestForLearning, recordGameEnd } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import { Gauge } from './gauge.tsx';
+import Monochrome2Online from './Monochrome2Online.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './monochrome2.css';
 
 const HUMAN: PlayerId = 0;
@@ -15,6 +19,7 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
   const [state, setState] = useState<M2State | null>(null);
   const [bidInput, setBidInput] = useState(0);
   const [aiThinking, setAiThinking] = useState(false);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const recorded = useRef(false);
 
@@ -80,6 +85,18 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
     setBidInput(0);
   }
 
+  if (online !== null && online !== 'panel') {
+    return <Monochrome2Online room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="m2-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel gameName="모노크롬 II" onReady={(room) => setOnline(room)} onCancel={() => setOnline(null)} />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('monochrome-2');
     return (
@@ -100,7 +117,8 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
             </span>
             <span className="memory-line">AI는 게이지와 승패에서 당신의 잔여 포인트 구간을 계산합니다</span>
           </div>
-          <button className="primary-btn" onClick={startGame}>대전 시작</button>
+          <button className="primary-btn" onClick={startGame}>AI 대전 시작</button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>
         </div>
       </div>
     );
@@ -209,21 +227,6 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
   );
 }
 
-function Gauge({ label, points, exact }: { label: string; points: number; exact?: boolean }) {
-  const tier = gaugeTier(points);
-  return (
-    <div className="m2-gauge">
-      <span className="g-label">
-        {label} {exact ? <b>{points}</b> : <b>{GAUGE_LABELS[tier]}</b>}
-      </span>
-      <div className="g-lights">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <span key={i} className={`light ${i <= tier ? 'on' : ''}`} title={GAUGE_LABELS[i]} />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function GameHeader({ onExit }: { onExit: () => void }) {
   return (
