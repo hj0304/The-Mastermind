@@ -24,6 +24,10 @@ import {
   recordRound,
 } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import { AnswerClock, HintList, ProblemBar } from './parts.tsx';
+import HiddenFormulaOnline from './HiddenFormulaOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './hiddenformula.css';
 
 const HUMAN: PlayerId = 0;
@@ -43,6 +47,7 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
   const [numInput, setNumInput] = useState('');
   const [ansInput, setAnsInput] = useState('');
   const [aiBuzzed, setAiBuzzed] = useState(false);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const considered = useRef<number[]>([]);
   const roundRef = useRef(0);
   const windowKeyRef = useRef('');
@@ -252,6 +257,22 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
     }
   }
 
+  if (online !== null && online !== 'panel') {
+    return <HiddenFormulaOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="hf-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel
+          gameName="히든 포뮬러"
+          onReady={(room) => setOnline(room)}
+          onCancel={() => setOnline(null)}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('hidden-formula');
     return (
@@ -273,7 +294,8 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
             </span>
             <span className="memory-line">AI는 힌트와 모순되는 규칙을 소거하는 귀납 추론만 사용하며, 당신의 정답률을 학습해 추론 폭과 버저 속도를 조절합니다</span>
           </div>
-          <button className="primary-btn" onClick={startGame}>대전 시작</button>
+          <button className="primary-btn" onClick={startGame}>AI 대전 시작</button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>
         </div>
       </div>
     );
@@ -304,21 +326,9 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
         </div>
       </div>
 
-      <div className="hf-problem">
-        <span className="num">{state.X}</span>
-        <span className="q">?</span>
-        <span className="num">{state.Y}</span>
-      </div>
+      <ProblemBar X={state.X} Y={state.Y} />
 
-      <div className="hf-hints">
-        {state.hints.length === 0 && <p className="hf-empty">첫 힌트를 만들 수를 제시하세요</p>}
-        {state.hints.map((h, i) => (
-          <div key={i} className={`hf-hint ${i === state.hints.length - 1 ? 'latest' : ''}`}>
-            <span className="idx">{i + 1}</span>
-            <span className="expr">{h.a} ? {h.b} = <b>{h.c}</b></span>
-          </div>
-        ))}
-      </div>
+      <HintList hints={state.hints} />
 
       <div className="hf-controls">
         {state.phase === 'gameover' || phase === 'done' ? null : state.phase === 'roundend' && state.lastRound ? (
@@ -418,17 +428,6 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/** 버저 후 답변 제한 시간 — 막판 3초는 붉게 경고 */
-function AnswerClock({ remain }: { remain: number }) {
-  const pct = Math.max(0, Math.min(100, (remain / ANSWER_SECONDS) * 100));
-  return (
-    <div className={`hf-answer-clock ${remain <= 3 ? 'urgent' : ''}`}>
-      <div className="hf-answer-bar" style={{ width: `${pct}%` }} />
-      <span className="hf-answer-num">{Math.ceil(remain)}초 안에 답하세요</span>
     </div>
   );
 }
