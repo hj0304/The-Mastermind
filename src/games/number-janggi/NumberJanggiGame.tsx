@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type { NPiece, NState, NType, PlayerId } from './engine.ts';
+import type { NPiece, NState, PlayerId } from './engine.ts';
 import {
   N_COLS,
-  N_ROWS,
   applyMove,
-  cellIdx,
   createGame,
-  isMinusEdge,
   pieceMoves,
   randomPlacement,
   resolveRevive,
@@ -16,6 +13,10 @@ import {
 } from './engine.ts';
 import { chooseAiMove, chooseAiRevive } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import { Board, DeadTray, typeLabel } from './board.tsx';
+import NumberJanggiOnline from './NumberJanggiOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './numberjanggi.css';
 
 const HUMAN: PlayerId = 0;
@@ -24,11 +25,6 @@ const AI: PlayerId = 1;
 type Phase = 'setup' | 'placement' | 'playing' | 'done';
 type Placement = Array<{ cell: number; piece: NPiece }>;
 
-function typeLabel(t: NType): string {
-  if (t === 'K') return '王';
-  if (t === 'M') return '雷';
-  return String(t);
-}
 
 export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<Phase>('setup');
@@ -37,6 +33,7 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
   const [state, setState] = useState<NState | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [aiThinking, setAiThinking] = useState(false);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
 
   function enterPlacement() {
@@ -147,6 +144,22 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
 
   // ---------- 렌더 ----------
 
+  if (online !== null && online !== 'panel') {
+    return <NumberJanggiOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="nj-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel
+          gameName="수(數)의 진"
+          onReady={(room) => setOnline(room)}
+          onCancel={() => setOnline(null)}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('number-janggi');
     return (
@@ -169,7 +182,10 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
             <span className="memory-line">AI는 당신의 기물 이동 이력에서 지뢰와 왕을 추리합니다</span>
           </div>
           <button className="primary-btn" onClick={enterPlacement}>
-            기물 배치하기
+            AI 대전 — 기물 배치하기
+          </button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>
+            ⚔️ 온라인 대전
           </button>
         </div>
       </div>
@@ -188,6 +204,7 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
         </p>
         <Board
           board={placementBoard}
+          me={HUMAN}
           onCellClick={onPlacementClick}
           highlight={swapFrom !== null ? new Set([swapFrom]) : new Set()}
           targets={new Set()}
@@ -230,10 +247,11 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
         </span>
       </div>
 
-      <DeadTray label="AI가 잃은 기물" pieces={state.dead[AI]} owner={AI} />
+      <DeadTray label="AI가 잃은 기물" pieces={state.dead[AI]} mine={false} />
 
       <Board
         board={state.board}
+        me={HUMAN}
         onCellClick={onCellClick}
         highlight={selected !== null ? new Set([selected]) : new Set()}
         targets={targets}
@@ -241,7 +259,7 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
         placementMode={false}
       />
 
-      <DeadTray label="내가 잃은 기물" pieces={state.dead[HUMAN]} owner={HUMAN} />
+      <DeadTray label="내가 잃은 기물" pieces={state.dead[HUMAN]} mine />
 
       {lastBattle && (
         <div className="nj-battles">
@@ -308,81 +326,6 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function Board({
-  board,
-  onCellClick,
-  highlight,
-  targets,
-  lastMove,
-  placementMode,
-}: {
-  board: (NPiece | null)[];
-  onCellClick: (cell: number) => void;
-  highlight: Set<number>;
-  targets: Set<number>;
-  lastMove: { from: number; to: number } | null;
-  placementMode: boolean;
-}) {
-  return (
-    <div className="nj-board">
-      {Array.from({ length: N_ROWS }, (_, ri) => {
-        const row = N_ROWS - 1 - ri; // 화면 위 = AI 진영(row 8)
-        return Array.from({ length: N_COLS }, (_, col) => {
-          const cell = cellIdx(row, col);
-          const piece = board[cell];
-          // 마이너스 경계 표시: 오른쪽 이웃 / 화면 위 이웃
-          const minusRight = col < N_COLS - 1 && isMinusEdge(cell, cellIdx(row, col + 1));
-          const minusUp = row < N_ROWS - 1 && isMinusEdge(cell, cellIdx(row + 1, col));
-          const zone = row <= 2 ? 'me' : row >= 6 ? 'ai' : '';
-          const isLast = lastMove !== null && (cell === lastMove.from || cell === lastMove.to);
-          return (
-            <button
-              key={cell}
-              className={`nj-cell zone-${zone} ${highlight.has(cell) ? 'selected' : ''} ${targets.has(cell) ? 'target' : ''} ${isLast ? 'last-move' : ''}`}
-              onClick={() => onCellClick(cell)}
-            >
-              {minusRight && <span className="minus right" />}
-              {minusUp && <span className="minus up" />}
-              {piece && <PieceView piece={piece} placementMode={placementMode} />}
-            </button>
-          );
-        });
-      })}
-    </div>
-  );
-}
-
-function PieceView({ piece, placementMode }: { piece: NPiece; placementMode: boolean }) {
-  const isMine = piece.owner === HUMAN;
-  if (!isMine && !piece.revealed) {
-    return <span className="nj-piece enemy back">?</span>;
-  }
-  return (
-    <span
-      className={`nj-piece ${isMine ? 'mine' : 'enemy'} face ${piece.type === 'K' ? 'king' : ''} ${piece.type === 'M' ? 'mine-piece' : ''}`}
-    >
-      {typeLabel(piece.type)}
-      {isMine && piece.revealed && !placementMode && <i className="exposed" title="상대에게 공개됨" />}
-    </span>
-  );
-}
-
-function DeadTray({ label, pieces, owner }: { label: string; pieces: NPiece[]; owner: PlayerId }) {
-  return (
-    <div className="nj-tray">
-      <span className="label">{label}</span>
-      <div className="tray-pieces">
-        {pieces.length === 0 && <span className="empty">없음</span>}
-        {pieces.map((p) => (
-          <span key={p.id} className={`nj-piece dead ${owner === HUMAN ? 'mine' : 'enemy'} face`}>
-            {typeLabel(p.type)}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
