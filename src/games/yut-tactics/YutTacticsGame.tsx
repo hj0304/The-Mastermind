@@ -145,11 +145,10 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
         return;
       }
     }
-    // 출발 말 선택
+    // 출발 말 선택 — 도착지가 하나뿐이어도 바로 옮기지 않는다.
+    // 어디로 가는지 먼저 보여주고 유저가 그 칸을 눌러 확정하게 한다.
     if (fromNodes.has(n)) {
-      const cand = stepOpts.filter((o) => o.from === n);
-      if (cand.length === 1) doMove(cand[0]);
-      else setSelectedFrom(n);
+      setSelectedFrom(n === selectedFrom ? null : n);
       return;
     }
     setSelectedFrom(null);
@@ -277,7 +276,7 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
         state={state}
         p={HUMAN}
         label="나"
-        movable={myMovePhase && selectedFrom === null && fromNodes.has(HOME)}
+        movable={myMovePhase && fromNodes.has(HOME)}
         onEnter={() => onNodeClick(HOME)}
       />
 
@@ -308,8 +307,12 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
             🏁 완주!
           </button>
         )}
-        {myMovePhase && selectedFrom !== null && !goalOpt && destOpts.length > 1 && (
-          <span className="yt-note dim">갈림길 — 초록으로 표시된 도착 칸 중 하나를 누르세요</span>
+        {myMovePhase && selectedFrom !== null && !goalOpt && destOpts.length > 0 && (
+          <span className="yt-note dim">
+            {destOpts.length > 1
+              ? '갈림길 — 초록으로 표시된 도착 칸 중 하나를 누르세요'
+              : '초록으로 표시된 도착 칸을 눌러 이동을 확정하세요'}
+          </span>
         )}
       </div>
 
