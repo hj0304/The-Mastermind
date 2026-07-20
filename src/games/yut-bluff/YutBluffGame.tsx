@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BState, PlayerId, RoundRec } from './engine.ts';
 import {
-  DEAD,
   GOAL,
   HOME,
   VALUE_NAME,
@@ -21,6 +20,10 @@ import {
   recordHumanReveal,
 } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import { D10Overlay, OutcomeBanner, PlayerTray } from './parts.tsx';
+import YutBluffOnline from './YutBluffOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import YutBoard from '../shared/YutBoard.tsx';
 import type { BoardPiece } from '../shared/YutBoard.tsx';
 import './bluff.css';
@@ -38,6 +41,7 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
   const [rollAnim, setRollAnim] = useState<'mine' | 'ai' | null>(null);
   const [banner, setBanner] = useState<RoundRec | null>(null);
   const [aiActing, setAiActing] = useState(false);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
   const animShownForRound = useRef(-1);
   const bannerShownForLen = useRef(0);
@@ -204,6 +208,22 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
     });
   }
 
+  if (online !== null && online !== 'panel') {
+    return <YutBluffOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="yb-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel
+          gameName="윷과 거짓말"
+          onReady={(room) => setOnline(room)}
+          onCancel={() => setOnline(null)}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('yut-bluff');
     return (
@@ -226,7 +246,8 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
             </span>
             <span className="memory-line">AI는 들킨 거짓말의 빈도·크기와 당신의 의심 패턴을 학습합니다</span>
           </div>
-          <button className="primary-btn" onClick={startGame}>대전 시작</button>
+          <button className="primary-btn" onClick={startGame}>AI 대전 시작</button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>
         </div>
       </div>
     );
@@ -376,14 +397,11 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
       </div>
 
       {/* 라운드 결과 배너 (믿음/의심 결과) */}
-      {banner && !rollAnim && <OutcomeBanner rec={banner} />}
+      {banner && !rollAnim && <OutcomeBanner rec={banner} me={HUMAN} oppLabel="AI" />}
 
       {/* 주사위 굴림 연출 */}
       {rollAnim && (
-        <D10Overlay
-          mine={rollAnim === 'mine'}
-          value={state.roll}
-        />
+        <D10Overlay mine={rollAnim === 'mine'} value={state.roll} oppLabel="AI" />
       )}
 
       {phase === 'done' && state.result && (
@@ -419,121 +437,6 @@ function endReason(state: BState): string {
   return w === HUMAN
     ? 'AI의 남은 말이 2개 미만 — 전멸승입니다!'
     : '남은 말이 2개 미만이 되어 패배했습니다';
-}
-
-/** 라운드 결과 배너 — 상대가 믿었는지/의심했는지를 크게 표시 */
-function OutcomeBanner({ rec }: { rec: RoundRec }) {
-  const rollerName = rec.roller === HUMAN ? '나' : 'AI';
-  const responderName = rec.roller === HUMAN ? 'AI' : '나';
-  let icon = '';
-  let title = '';
-  let desc = '';
-  let tone: 'good' | 'bad' | 'neutral' = 'neutral';
-
-  if (rec.outcome === 'moved') {
-    icon = rec.caught ? '💥' : '🤝';
-    title = `${responderName}${responderName === '나' ? '는' : '는'} 믿었습니다`;
-    desc = `${rollerName}의 「${VALUE_NAME[rec.declared]}」 — ${rec.declared}칸 전진${
-      rec.caught ? ' · 잡았습니다!' : ''
-    }${rec.extra ? ' · 한 번 더' : ''}`;
-    tone = rec.caught ? (rec.roller === HUMAN ? 'good' : 'bad') : 'neutral';
-  } else if (rec.outcome === 'liar-caught') {
-    icon = '🔥';
-    title = `${responderName}의 의심 적중!`;
-    desc = `「${VALUE_NAME[rec.declared]}」 선언은 거짓 — 실제는 「${VALUE_NAME[rec.roll]}」. ${rollerName}의 말 제거!`;
-    tone = rec.roller === HUMAN ? 'bad' : 'good';
-  } else if (rec.outcome === 'wrong-challenge') {
-    icon = '💦';
-    title = `${responderName}의 의심 실패…`;
-    desc = `「${VALUE_NAME[rec.declared]}」은 진실이었습니다. ${responderName}의 말 제거, 이동은 그대로${
-      rec.caught ? ' (잡음!)' : ''
-    }`;
-    tone = rec.roller === HUMAN ? 'good' : 'bad';
-  } else {
-    icon = '🕳️';
-    title = `${rollerName} — 「꽝」 인정`;
-    desc = `${rollerName}의 말 1개가 제거됩니다`;
-    tone = rec.roller === HUMAN ? 'bad' : 'good';
-  }
-
-  return (
-    <div className="yb-banner-overlay">
-      <div className={`yb-banner ${tone}`}>
-        <span className="yb-banner-icon">{icon}</span>
-        <span className="yb-banner-title">{title}</span>
-        <span className="yb-banner-desc">{desc}</span>
-      </div>
-    </div>
-  );
-}
-
-function D10Overlay({ mine, value }: { mine: boolean; value: number }) {
-  const [settled, setSettled] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => setSettled(true), 900);
-    return () => clearTimeout(timer);
-  }, []);
-  return (
-    <div className="d10-overlay">
-      <div
-        className={`d10 ${settled ? 'settled' : 'rolling'} ${!mine ? 'hidden-face' : ''}`}
-      >
-        {settled ? (mine ? VALUE_NAME[value] : '?') : ''}
-      </div>
-      {mine ? (
-        <>
-          <span className="d10-secret-tag">나만 볼 수 있는 결과</span>
-          <div className="d10-caption">
-            10면체 주사위를 굴렸습니다 — 이제 <b>원하는 대로</b> 선언하세요
-          </div>
-        </>
-      ) : (
-        <div className="d10-caption">
-          AI가 주사위를 굴렸습니다
-          <br />
-          결과는 <b>AI만</b> 확인했습니다
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PlayerTray({
-  state,
-  p,
-  label,
-  movable,
-  selected,
-  onEnter,
-}: {
-  state: BState;
-  p: PlayerId;
-  label: string;
-  movable?: boolean;
-  selected?: boolean;
-  onEnter?: () => void;
-}) {
-  const home = state.pieces[p].filter((x) => x === HOME).length;
-  const dead = state.pieces[p].filter((x) => x === DEAD).length;
-  const done = state.pieces[p].filter((x) => x === GOAL).length;
-  return (
-    <div className={`yb-tray pl${p}`}>
-      <span className="yb-label">{label}</span>
-      <button
-        className={`yb-home ${movable ? 'movable' : ''} ${selected ? 'picked' : ''}`}
-        disabled={!movable}
-        onClick={onEnter}
-      >
-        {Array.from({ length: home }, (_, i) => (
-          <span key={i} className={`tray-token pl${p}`} />
-        ))}
-        <span>대기 {home}</span>
-      </button>
-      <span className="yb-counts">
-        완주 <b>{done}</b>/2{dead > 0 && <em> · 제거 {dead}</em>}
-      </span>
-    </div>
-  );
 }
 
 function GameHeader({ onExit }: { onExit: () => void }) {
