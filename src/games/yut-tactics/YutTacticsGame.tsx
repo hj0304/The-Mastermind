@@ -14,6 +14,10 @@ import { chooseAiMove, chooseAiSticks, recordGameEnd, recordPickForLearning } fr
 import { getRecord, recordResult } from '../../stats.ts';
 import YutBoard from '../shared/YutBoard.tsx';
 import type { BoardPiece } from '../shared/YutBoard.tsx';
+import { PlayerTray } from './tray.tsx';
+import YutTacticsOnline from './YutTacticsOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './yut.css';
 
 const HUMAN: PlayerId = 0;
@@ -35,6 +39,7 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
   const [selectedFrom, setSelectedFrom] = useState<number | null>(null);
   const [reveal, setReveal] = useState<Reveal | null>(null);
   const [aiActing, setAiActing] = useState(false);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
 
   function startGame() {
@@ -150,6 +155,18 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
     setSelectedFrom(null);
   }
 
+  if (online !== null && online !== 'panel') {
+    return <YutTacticsOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="yt-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel gameName="윷 대전" onReady={(room) => setOnline(room)} onCancel={() => setOnline(null)} />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('yut-tactics');
     return (
@@ -172,7 +189,8 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
             </span>
             <span className="memory-line">AI는 당신의 윷가락 선택 패턴을 역할별로 학습합니다</span>
           </div>
-          <button className="primary-btn" onClick={startGame}>대전 시작</button>
+          <button className="primary-btn" onClick={startGame}>AI 대전 시작</button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>
         </div>
       </div>
     );
@@ -347,41 +365,6 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function PlayerTray({
-  state,
-  p,
-  label,
-  movable,
-  onEnter,
-}: {
-  state: YState;
-  p: PlayerId;
-  label: string;
-  movable?: boolean;
-  onEnter?: () => void;
-}) {
-  const home = state.pieces[p].filter((x) => x.pos === HOME).length;
-  const done = state.pieces[p].filter((x) => x.pos === GOAL).length;
-  return (
-    <div className={`yt-tray pl${p}`}>
-      <span className="yt-tray-label">{label}</span>
-      <button
-        className={`yt-home ${movable ? 'movable' : ''}`}
-        disabled={!movable}
-        onClick={onEnter}
-      >
-        {Array.from({ length: home }, (_, i) => (
-          <span key={i} className={`tray-token pl${p}`} />
-        ))}
-        <span>대기 {home}</span>
-      </button>
-      <span className="yt-done">
-        완주 <b>{done}</b>/2
-      </span>
     </div>
   );
 }
