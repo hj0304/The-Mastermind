@@ -10,6 +10,10 @@ import {
 } from './engine.ts';
 import { aiDecide, aiSetup, recordGameEnd, recordShowdownForLearning } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import { TrackRow, tileColor } from './track.tsx';
+import MonochromeRaiseOnline from './MonochromeRaiseOnline.tsx';
+import OnlinePanel from '../../net/OnlinePanel.tsx';
+import type { NetRoom } from '../../net/room.ts';
 import './raise.css';
 
 const HUMAN: PlayerId = 0;
@@ -17,7 +21,6 @@ const AI: PlayerId = 1;
 
 type Phase = 'setup' | 'arrange' | 'playing' | 'done';
 
-const tileColor = (n: number) => (n % 2 === 0 ? 'black' : 'white');
 
 export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<Phase>('setup');
@@ -25,6 +28,7 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
   const [swapFrom, setSwapFrom] = useState<number | null>(null);
   const [state, setState] = useState<RaiseState | null>(null);
   const [aiThinking, setAiThinking] = useState(false);
+  const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
   const learned = useRef(0);
 
@@ -109,6 +113,18 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
 
   // ---------- 렌더 ----------
 
+  if (online !== null && online !== 'panel') {
+    return <MonochromeRaiseOnline room={online} onExit={onExit} />;
+  }
+  if (online === 'panel') {
+    return (
+      <div className="rz-root">
+        <GameHeader onExit={onExit} />
+        <OnlinePanel gameName="모노크롬 레이즈" onReady={(room) => setOnline(room)} onCancel={() => setOnline(null)} />
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     const rec = getRecord('monochrome-raise');
     return (
@@ -127,7 +143,8 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
             <span className="record-line">통산 전적 <b>{rec.wins}승 {rec.losses}패</b></span>
             <span className="memory-line">AI는 쇼다운마다 당신의 베팅 크기와 실제 타일을 대조해 블러핑을 학습합니다</span>
           </div>
-          <button className="primary-btn" onClick={enterArrange}>배치 설계하기</button>
+          <button className="primary-btn" onClick={enterArrange}>AI 대전 — 배치 설계하기</button>
+          <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>
         </div>
       </div>
     );
@@ -245,42 +262,6 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function TrackRow({
-  label,
-  state,
-  p,
-  current,
-  mine,
-}: {
-  label: string;
-  state: RaiseState;
-  p: PlayerId;
-  current: number;
-  mine?: boolean;
-}) {
-  return (
-    <div className="rz-track">
-      <span className="label">{label}</span>
-      <div className="cells">
-        {state.order[p].map((v, pos) => {
-          const rec = state.history.find((h) => h.round === pos);
-          const done = pos < current || state.phase === 'gameover';
-          const revealed = mine || (rec?.revealed ?? false);
-          const isCurrent = pos === current && state.phase !== 'gameover';
-          return (
-            <div key={pos} className={`rz-cell ${isCurrent ? 'current' : ''} ${done ? 'done' : ''}`}>
-              <span className={`rz-tile small ${revealed ? tileColor(v) : 'back'}`}>
-                {revealed ? v : '?'}
-              </span>
-              <span className="chips">{state.bets[p][pos]}</span>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
