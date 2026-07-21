@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import type { MonoState } from './engine.ts';
+import type { MonoState, PlayerId } from './engine.ts';
 import { createGame, currentPlayer, play, tileColor } from './engine.ts';
 import type { MonoView } from './view.ts';
 import { viewFor } from './view.ts';
 import type { NetRoom } from '../../net/room.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import './monochrome.css';
 import '../../net/online.css';
 
@@ -14,16 +15,23 @@ import '../../net/online.css';
  */
 
 type NetMsg =
+  /** 선공 동전 결과 (호스트가 정해 알린다) */
+  | { t: 'toss'; first: PlayerId }
   | { t: 'ready' }
   | { t: 'view'; v: MonoView }
   | { t: 'act'; tile: number };
 
 export default function MonochromeOnline({ room, onExit }: { room: NetRoom; onExit: () => void }) {
+  const me: PlayerId = room.isHost ? 0 : 1;
   // 호스트 전용 전체 상태 (게스트는 null 유지)
   const stateRef = useRef<MonoState | null>(null);
   const [view, setView] = useState<MonoView | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
+  /** 선공 동전 - 양쪽이 같은 결과를 본다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+  /** 마지막 동전 결과 — 게스트가 늦게 들어오면 다시 보낸다 */
+  const lastToss = useRef<PlayerId | null>(null);
   const prevHistLen = useRef(0);
 
   // 라운드 결과 플래시
@@ -45,9 +53,26 @@ export default function MonochromeOnline({ room, onExit }: { room: NetRoom; onEx
   }
 
   // 연결/메시지 배선
+  /** (호스트) 선공을 뽑아 양쪽에 동전을 띄운다 */
+  function tossFirst(): PlayerId {
+    const first: PlayerId = Math.random() < 0.5 ? 0 : 1;
+    lastToss.current = first;
+    room.send({ t: 'toss', first } satisfies NetMsg);
+    setToss(first);
+    return first;
+  }
+
   useEffect(() => {
     const offMsg = room.onMsg((raw) => {
       const msg = raw as NetMsg;
+      if (msg.t === 'toss') {
+        setToss(msg.first);
+        return;
+      }
+      // 호스트가 게스트 입장 전에 보낸 동전은 버려지므로 다시 알린다
+      if (room.isHost && msg.t === 'ready' && lastToss.current !== null) {
+        room.send({ t: 'toss', first: lastToss.current } satisfies NetMsg);
+      }
       if (room.isHost) {
         if (msg.t === 'ready' && stateRef.current) {
           room.send({ t: 'view', v: viewFor(stateRef.current, 1) } satisfies NetMsg);
@@ -72,7 +97,7 @@ export default function MonochromeOnline({ room, onExit }: { room: NetRoom; onEx
     });
 
     if (room.isHost) {
-      hostApply(createGame(Math.random() < 0.5 ? 0 : 1));
+      hostApply(createGame(tossFirst()));
     } else {
       room.send({ t: 'ready' } satisfies NetMsg);
     }
@@ -108,7 +133,17 @@ export default function MonochromeOnline({ room, onExit }: { room: NetRoom; onEx
   function rematch() {
     if (!room.isHost) return;
     prevHistLen.current = 0;
-    hostApply(createGame(Math.random() < 0.5 ? 0 : 1));
+    hostApply(createGame(tossFirst()));
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss === me ? 0 : 1}
+        labels={['나', '상대']}
+        onDone={() => setToss(null)}
+      />
+    );
   }
 
   if (!view) {

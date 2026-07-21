@@ -3,6 +3,7 @@ import type { M2State, PlayerId } from './engine.ts';
 import { bidColor, createGame, currentPlayer, play } from './engine.ts';
 import { viewFor } from './view.ts';
 import type { NetRoom } from '../../net/room.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import { Gauge } from './gauge.tsx';
 import './monochrome2.css';
 import '../../net/online.css';
@@ -12,7 +13,10 @@ import '../../net/online.css';
  * 상대의 정확한 포인트·제시액은 뷰에서 마스킹된다(게이지 단계와 색만 유지).
  */
 
-type NetMsg = { t: 'ready' } | { t: 'view'; v: M2State } | { t: 'act'; bid: number };
+type NetMsg =
+  /** 선공 동전 결과 (호스트가 정해 알린다) */
+  | { t: 'toss'; first: PlayerId }
+  | { t: 'ready' } | { t: 'view'; v: M2State } | { t: 'act'; bid: number };
 
 export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onExit: () => void }) {
   const me: PlayerId = room.isHost ? 0 : 1;
@@ -22,6 +26,10 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
   const [bidInput, setBidInput] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
+  /** 선공 동전 - 양쪽이 같은 결과를 본다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+  /** 마지막 동전 결과 — 게스트가 늦게 들어오면 다시 보낸다 */
+  const lastToss = useRef<PlayerId | null>(null);
   const prevHist = useRef(0);
 
   function hostApply(next: M2State) {
@@ -40,9 +48,26 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
     }
   }
 
+  /** (호스트) 선공을 뽑아 양쪽에 동전을 띄운다 */
+  function tossFirst(): PlayerId {
+    const first: PlayerId = Math.random() < 0.5 ? 0 : 1;
+    lastToss.current = first;
+    room.send({ t: 'toss', first } satisfies NetMsg);
+    setToss(first);
+    return first;
+  }
+
   useEffect(() => {
     const offMsg = room.onMsg((raw) => {
       const msg = raw as NetMsg;
+      if (msg.t === 'toss') {
+        setToss(msg.first);
+        return;
+      }
+      // 호스트가 게스트 입장 전에 보낸 동전은 버려지므로 다시 알린다
+      if (room.isHost && msg.t === 'ready' && lastToss.current !== null) {
+        room.send({ t: 'toss', first: lastToss.current } satisfies NetMsg);
+      }
       if (room.isHost) {
         const s = stateRef.current;
         if (!s) return;
@@ -58,7 +83,7 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
     const offPeers = room.onPeers((c) => {
       if (c === 0) setOppLeft(true);
     });
-    if (room.isHost) hostApply(createGame(Math.random() < 0.5 ? 0 : 1));
+    if (room.isHost) hostApply(createGame(tossFirst()));
     else room.send({ t: 'ready' } satisfies NetMsg);
     return () => {
       offMsg();
@@ -97,6 +122,16 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
       room.send({ t: 'act', bid } satisfies NetMsg);
     }
     setBidInput(0);
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss === me ? 0 : 1}
+        labels={['나', '상대']}
+        onDone={() => setToss(null)}
+      />
+    );
   }
 
   if (!view) {
@@ -210,7 +245,7 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
             <p>{state.scores[me]} : {state.scores[opp]}</p>
             <div className="end-actions">
               {room.isHost ? (
-                <button className="primary-btn" onClick={() => { prevHist.current = 0; hostApply(createGame(Math.random() < 0.5 ? 0 : 1)); }}>
+                <button className="primary-btn" onClick={() => { prevHist.current = 0; hostApply(createGame(tossFirst())); }}>
                   다시 대전
                 </button>
               ) : (

@@ -17,6 +17,7 @@ import { D10Overlay, OutcomeBanner, PlayerTray } from './parts.tsx';
 import YutBoard from '../shared/YutBoard.tsx';
 import type { BoardPiece } from '../shared/YutBoard.tsx';
 import type { NetRoom } from '../../net/room.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import { makeCommitment, verifyCommitment } from '../../net/commit.ts';
 import './bluff.css';
 import '../../net/online.css';
@@ -51,6 +52,8 @@ type BAction = { k: 'declare'; d: Declaration } | { k: 'respond'; challenge: boo
  * 지난 판의 늦게 도착한 메시지가 새 판의 절차에 섞여 들어간다.
  */
 type NetMsg =
+  /** 선공 동전 결과 (호스트가 정해 알린다) */
+  | { t: 'toss'; first: PlayerId }
   | { t: 'ready' }
   | { t: 'state'; s: BState; g: number }
   /** 굴리는 쪽의 난수 커밋 */
@@ -97,6 +100,10 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
   const [awaitingOpen, setAwaitingOpen] = useState(false);
   const [cheat, setCheat] = useState<string | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
+  /** 선공 동전 - 양쪽이 같은 결과를 본다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+  /** 마지막 동전 결과 — 게스트가 늦게 들어오면 다시 보낸다 */
+  const lastToss = useRef<PlayerId | null>(null);
 
   const dice = useRef<Dice>(freshDice('', -1, false));
   /** 몇 번째 판인지 — 호스트가 매기고 상태와 함께 보낸다 */
@@ -253,9 +260,26 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
     if (rec.roll !== v.roll) setCheat('공개된 주사위와 판정에 쓰인 값이 다릅니다');
   }
 
+  /** (호스트) 선공을 뽑아 양쪽에 동전을 띄운다 */
+  function tossFirst(): PlayerId {
+    const first: PlayerId = Math.random() < 0.5 ? 0 : 1;
+    lastToss.current = first;
+    room.send({ t: 'toss', first } satisfies NetMsg);
+    setToss(first);
+    return first;
+  }
+
   useEffect(() => {
     const offMsg = room.onMsg((raw) => {
       const msg = raw as NetMsg;
+      if (msg.t === 'toss') {
+        setToss(msg.first);
+        return;
+      }
+      // 호스트가 게스트 입장 전에 보낸 동전은 버려지므로 다시 알린다
+      if (room.isHost && msg.t === 'ready' && lastToss.current !== null) {
+        room.send({ t: 'toss', first: lastToss.current } satisfies NetMsg);
+      }
       switch (msg.t) {
         case 'dcommit':
           inbox.current.commit = { k: msg.k, h: msg.h };
@@ -303,7 +327,7 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
   }, []);
 
   function startNewGame() {
-    const s = createGame(Math.random() < 0.5 ? 0 : 1, UNKNOWN);
+    const s = createGame(tossFirst(), UNKNOWN);
     gen.current += 1;
     dice.current = freshDice('', -1, false);
     inbox.current = { commit: null, nonce: null, open: null, want: null };
@@ -354,6 +378,16 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
   function act(a: BAction) {
     if (room.isHost) hostAct(0, a);
     else room.send({ t: 'act', a } satisfies NetMsg);
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss === me ? 0 : 1}
+        labels={['나', '상대']}
+        onDone={() => setToss(null)}
+      />
+    );
   }
 
   if (!state) {

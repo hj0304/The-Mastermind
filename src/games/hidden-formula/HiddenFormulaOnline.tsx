@@ -16,6 +16,7 @@ import {
 import { viewFor } from './view.ts';
 import { AnswerClock, HintList, ProblemBar } from './parts.tsx';
 import type { NetRoom } from '../../net/room.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import './hiddenformula.css';
 import '../../net/online.css';
 
@@ -46,6 +47,8 @@ const ROUNDEND_MS = 6000;
 const PING_MS = 3000;
 
 type NetMsg =
+  /** 선공 동전 결과 (호스트가 정해 알린다) */
+  | { t: 'toss'; first: PlayerId }
   | { t: 'ready' }
   /** endsInMs: 지금 단계의 남은 시간 (없으면 null) */
   | { t: 'state'; s: HFState; endsInMs: number | null }
@@ -72,6 +75,10 @@ export default function HiddenFormulaOnline({ room, onExit }: { room: NetRoom; o
   const [ansInput, setAnsInput] = useState('');
   const [skipWant, setSkipWant] = useState<[boolean, boolean]>([false, false]);
   const [oppLeft, setOppLeft] = useState(false);
+  /** 선공 동전 - 양쪽이 같은 결과를 본다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+  /** 마지막 동전 결과 — 게스트가 늦게 들어오면 다시 보낸다 */
+  const lastToss = useRef<PlayerId | null>(null);
 
   // 호스트 전용 — 진짜 시계와 버저 중재
   const windowEnd = useRef<number | null>(null);
@@ -259,9 +266,26 @@ export default function HiddenFormulaOnline({ room, onExit }: { room: NetRoom; o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** (호스트) 선공을 뽑아 양쪽에 동전을 띄운다 */
+  function tossFirst(): PlayerId {
+    const first: PlayerId = Math.random() < 0.5 ? 0 : 1;
+    lastToss.current = first;
+    room.send({ t: 'toss', first } satisfies NetMsg);
+    setToss(first);
+    return first;
+  }
+
   useEffect(() => {
     const offMsg = room.onMsg((raw) => {
       const msg = raw as NetMsg;
+      if (msg.t === 'toss') {
+        setToss(msg.first);
+        return;
+      }
+      // 호스트가 게스트 입장 전에 보낸 동전은 버려지므로 다시 알린다
+      if (room.isHost && msg.t === 'ready' && lastToss.current !== null) {
+        room.send({ t: 'toss', first: lastToss.current } satisfies NetMsg);
+      }
       if (room.isHost) {
         // 어떤 메시지든 도착했다는 건 시계를 확인할 기회다 (탭 억제 대비)
         hostTick();
@@ -320,7 +344,7 @@ export default function HiddenFormulaOnline({ room, onExit }: { room: NetRoom; o
     const offPeers = room.onPeers((c) => {
       if (c === 0) setOppLeft(true);
     });
-    if (room.isHost) hostSend(createGame(Math.random() < 0.5 ? 0 : 1));
+    if (room.isHost) hostSend(createGame(tossFirst()));
     else room.send({ t: 'ready' } satisfies NetMsg);
     return () => {
       offMsg();
@@ -365,6 +389,16 @@ export default function HiddenFormulaOnline({ room, onExit }: { room: NetRoom; o
       });
       room.send({ t: 'skip', on } satisfies NetMsg);
     }
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss === me ? 0 : 1}
+        labels={['나', '상대']}
+        onDone={() => setToss(null)}
+      />
+    );
   }
 
   if (!state) {
@@ -517,7 +551,7 @@ export default function HiddenFormulaOnline({ room, onExit }: { room: NetRoom; o
                   className="primary-btn"
                   onClick={() => {
                     windowKey.current = '';
-                    hostSend(createGame(Math.random() < 0.5 ? 0 : 1));
+                    hostSend(createGame(tossFirst()));
                   }}
                 >
                   다시 대전
