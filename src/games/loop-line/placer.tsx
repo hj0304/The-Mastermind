@@ -22,6 +22,7 @@ import {
   W,
   fits,
   isValidCells,
+  isValidFreeform,
 } from './engine.ts';
 import { RailTile, StationTile, TrainOnLoop, maskDirs } from './rail.tsx';
 
@@ -54,7 +55,16 @@ export interface Placer {
   setNotice: (m: string | null) => void;
 }
 
-export function usePlacer(board: Board, tilesLeft: number, active: boolean): Placer {
+/**
+ * freeform = 불가능 선언 뒤 혼자 완성하는 국면.
+ * 이때는 1~3개·일렬 제약이 없어 남은 타일을 한 번에 깔 수 있다.
+ */
+export function usePlacer(
+  board: Board,
+  tilesLeft: number,
+  active: boolean,
+  freeform = false,
+): Placer {
   const [held, setHeld] = useState<number>(STRAIGHT_H);
   const [pending, setPending] = useState<Tile[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -96,11 +106,16 @@ export function usePlacer(board: Board, tilesLeft: number, active: boolean): Pla
     }
 
     const cells = [...pending.map((t) => t.cell), cell];
-    if (!isValidCells(board, cells, tilesLeft)) {
+    const okCells = freeform
+      ? isValidFreeform(board, cells, tilesLeft)
+      : isValidCells(board, cells, tilesLeft);
+    if (!okCells) {
       setNotice(
-        pending.length === 0
-          ? '기존 타일에 맞닿은 빈 칸에만 놓을 수 있습니다'
-          : '한 턴에 놓는 타일은 1~3개이고, 2개 이상이면 일렬이어야 합니다',
+        freeform
+          ? '이미 놓인 철로에 이어지도록 놓아야 합니다'
+          : pending.length === 0
+            ? '기존 타일에 맞닿은 빈 칸에만 놓을 수 있습니다'
+            : '한 턴에 놓는 타일은 1~3개이고, 2개 이상이면 일렬이어야 합니다',
       );
       return;
     }

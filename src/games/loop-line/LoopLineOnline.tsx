@@ -9,6 +9,7 @@ import {
   createGame,
   emptyBoard,
   isValidCells,
+  isValidFreeform,
   isValidPlacement,
 } from './engine.ts';
 import type { NetRoom } from '../../net/room.ts';
@@ -36,7 +37,8 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
     !!state && !state.result &&
     ((state.phase === 'play' && state.turn === me) ||
       (state.phase === 'attempt' && state.attempter === me));
-  const placer = usePlacer(state?.board ?? emptyBoard(), state?.tilesLeft ?? 0, myTurn);
+  const attemptMode = state?.phase === 'attempt';
+  const placer = usePlacer(state?.board ?? emptyBoard(), state?.tilesLeft ?? 0, myTurn, attemptMode);
 
   function moverOf(s: LLState): PlayerId | null {
     if (s.result) return null;
@@ -125,10 +127,13 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
 
   const myActs = moverOf(state) === me;
   const picksValid =
-    placer.pending.length > 0 && isValidPlacement(state.board, placer.pending, state.tilesLeft);
+    placer.pending.length > 0 &&
+    isValidPlacement(state.board, placer.pending, state.tilesLeft, attemptMode);
   const canPlace = (cell: number) =>
     myActs &&
-    isValidCells(state.board, [...placer.pending.map((t) => t.cell), cell], state.tilesLeft) &&
+    (attemptMode
+      ? isValidFreeform(state.board, [...placer.pending.map((t) => t.cell), cell], state.tilesLeft)
+      : isValidCells(state.board, [...placer.pending.map((t) => t.cell), cell], state.tilesLeft)) &&
     workBoard(state.board, placer.pending)[cell] === 0;
   const usedTiles = TILES - state.tilesLeft;
 
@@ -210,9 +215,19 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
               )}
             </div>
             <p className="ll-hint">
-              타일을 고르고 <b>회전</b>으로 방향을 정한 뒤 빈 칸에 놓으세요 (한 턴에 1~3개,
-              2개 이상이면 일렬). 놓아둔 타일을 다시 누르면 그 자리에서 돌아갑니다.
-              {state.phase === 'attempt' && ` — 남은 타일 ${state.tilesLeft}개로 완성해야 합니다`}
+              {attemptMode ? (
+                <>
+                  혼자 완성하는 국면이라 <b>일렬·3개 제한이 없습니다</b> — 남은 타일{' '}
+                  {state.tilesLeft}개로 이어지게만 놓으면 됩니다. 타일을 고르고{' '}
+                  <b>회전</b>으로 방향을 맞추세요.
+                </>
+              ) : (
+                <>
+                  타일을 고르고 <b>회전</b>으로 방향을 정한 뒤 빈 칸에 놓으세요 (한 턴에
+                  1~3개, 2개 이상이면 일렬). 놓아둔 타일을 다시 누르면 그 자리에서
+                  돌아갑니다.
+                </>
+              )}
             </p>
           </div>
         ) : (
