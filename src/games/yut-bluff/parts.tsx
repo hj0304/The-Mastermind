@@ -128,7 +128,8 @@ export function D10Overlay({
   const [stage, setStage] = useState<'ready' | 'rolling' | 'settled'>(mine ? 'ready' : 'rolling');
   const power = usePower(stage === 'ready');
   const [flick, setFlick] = useState(0);
-  const rollMs = 900 + Math.round(power * 6);
+  // 세기에 따라 0.7초(살살)에서 2.6초(힘껏)까지 — 결과는 그대로고 구르는 시간만 달라진다
+  const rollMs = 700 + Math.round(power * 19);
 
   // 굴러가는 동안 눈이 계속 바뀐다
   useEffect(() => {
@@ -150,7 +151,7 @@ export function D10Overlay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
-  const spins = 1 + Math.round((power / 100) * 2);
+  const spins = 1 + Math.round((power / 100) * 4);
   const face = stage === 'settled' ? (mine ? VALUE_NAME[value] : '?') : FLICK_FACES[flick % FLICK_FACES.length];
 
   return (
