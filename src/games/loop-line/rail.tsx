@@ -1,18 +1,26 @@
 /**
  * 순환선 철로 렌더링 — AI 대전(LoopLineGame)과 온라인 대전(LoopLineOnline)이 공유한다.
  *
- * 원작에서 타일은 양면(앞=직선 / 뒤=ㄱ자)이고 놓을 때 면을 고른다. 본 구현은
- * 칸을 차지하는 방식이라 모양을 따로 고르지 않는 대신, **인접한 타일 관계로 철로
- * 모양을 실시간으로 그려** 같은 그림이 보이게 한다. 최종 순환선에서는 모든 칸의
- * 차수가 정확히 2이므로 각 칸의 모양(직선/ㄱ자)이 유일하게 결정되고, 따라서
- * 이 표현은 완성 시점에 원작과 동일한 배치가 된다.
+ * 타일은 양면(앞=직선 / 뒤=ㄱ자)이고 놓을 때 면과 방향을 정한다. 그 방향은
+ * 엔진의 마스크(열린 방향 4비트)로 저장되므로, 여기서는 마스크를 그대로 그린다.
+ * 인접 관계로 추측하지 않는다 — 유저가 고른 방향이 곧 그림이어야 한다.
  */
 
 import { useEffect, useState } from 'react';
-import { STATIONS, W, neighbors4, rc } from './engine.ts';
+import { E, N, S, WST, rc } from './engine.ts';
 
 /** 0=위, 1=오른쪽, 2=아래, 3=왼쪽 */
 export type Dir = 0 | 1 | 2 | 3;
+
+/** 마스크(열린 방향 비트) → 렌더용 방향 목록 */
+export function maskDirs(mask: number): Dir[] {
+  const out: Dir[] = [];
+  if (mask & N) out.push(0);
+  if (mask & E) out.push(1);
+  if (mask & S) out.push(2);
+  if (mask & WST) out.push(3);
+  return out;
+}
 
 const VB = 100; // 셀 좌표계
 const MID = VB / 2;
@@ -23,26 +31,6 @@ const EDGE: Record<Dir, [number, number]> = {
   2: [MID, VB],
   3: [0, MID],
 };
-
-/** 셀에서 열린 방향들 — 인접한 '놓인 칸' 쪽으로 철로가 뻗는다 */
-export function openDirs(cell: number, placed: Set<number>): Dir[] {
-  const [r, c] = rc(cell);
-  const out: Dir[] = [];
-  for (const n of neighbors4(cell)) {
-    if (!placed.has(n)) continue;
-    const [nr, nc] = rc(n);
-    if (nr === r - 1) out.push(0);
-    else if (nc === c + 1) out.push(1);
-    else if (nr === r + 1) out.push(2);
-    else if (nc === c - 1) out.push(3);
-  }
-  // 기차역은 항상 좌우로 열려 있다(순환선이 역을 가로로 통과)
-  if (STATIONS.includes(cell as never)) {
-    if (!out.includes(1)) out.push(1);
-    if (!out.includes(3)) out.push(3);
-  }
-  return out;
-}
 
 /** 침목을 선분 위에 일정 간격으로 배치 */
 function sleepers(from: [number, number], to: [number, number], count: number) {
@@ -172,4 +160,4 @@ export function TrainOnLoop({ loop, cellPct }: { loop: number[]; cellPct: number
 }
 
 /** 셀 인덱스 → [행, 열] (렌더러 편의용 재수출) */
-export { rc, W };
+export { rc };

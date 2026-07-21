@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import type { LLState, PlayerId } from './engine.ts';
+import type { Tile } from './engine.ts';
 import {
-  STATIONS,
   TILES,
-  W,
   applyDeclare,
   applyGiveUp,
   applyPlace,
   createGame,
-  isValidLine,
-  placedSet,
+  emptyBoard,
+  isValidCells,
+  isValidPlacement,
 } from './engine.ts';
 import type { NetRoom } from '../../net/room.ts';
-import { RailTile, StationTile, TrainOnLoop, openDirs } from './rail.tsx';
+import { RailBoard, TileTray, usePlacer, workBoard } from './placer.tsx';
 import './loopline.css';
 import '../../net/online.css';
 
@@ -21,7 +21,7 @@ import '../../net/online.css';
  * 액션 검증은 호스트 엔진에서 수행(호스트 권위).
  */
 
-type LLAction = { kind: 'place'; line: number[] } | { kind: 'declare' } | { kind: 'giveup' };
+type LLAction = { kind: 'place'; tiles: Tile[] } | { kind: 'declare' } | { kind: 'giveup' };
 type NetMsg = { t: 'ready' } | { t: 'state'; s: LLState } | { t: 'act'; a: LLAction };
 
 
@@ -30,8 +30,13 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
   const opp: PlayerId = (1 - me) as PlayerId;
   const stateRef = useRef<LLState | null>(null);
   const [state, setState] = useState<LLState | null>(null);
-  const [picks, setPicks] = useState<number[]>([]);
   const [oppLeft, setOppLeft] = useState(false);
+
+  const myTurn =
+    !!state && !state.result &&
+    ((state.phase === 'play' && state.turn === me) ||
+      (state.phase === 'attempt' && state.attempter === me));
+  const placer = usePlacer(state?.board ?? emptyBoard(), state?.tilesLeft ?? 0, myTurn);
 
   function moverOf(s: LLState): PlayerId | null {
     if (s.result) return null;
@@ -49,7 +54,7 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
   function hostAct(s: LLState, actor: PlayerId, a: LLAction): LLState | null {
     if (moverOf(s) !== actor) return null;
     try {
-      if (a.kind === 'place') return applyPlace(s, a.line);
+      if (a.kind === 'place') return applyPlace(s, a.tiles);
       if (a.kind === 'declare' && s.phase === 'play') return applyDeclare(s);
       if (a.kind === 'giveup' && s.phase === 'attempt') return applyGiveUp(s);
     } catch {
@@ -71,7 +76,7 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
         }
       } else if (msg.t === 'state') {
         setState(msg.s);
-        setPicks([]);
+        placer.clear();
       }
     });
     const offPeers = room.onPeers((count) => {
@@ -100,7 +105,7 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
       const next = hostAct(state, 0, a);
       if (next) {
         hostApply(next);
-        setPicks([]);
+        placer.clear();
       }
     } else {
       room.send({ t: 'act', a } satisfies NetMsg);
@@ -119,14 +124,12 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
   }
 
   const myActs = moverOf(state) === me;
-  const set = placedSet(state);
-  const railSet = new Set([...set, ...picks]);
-  const loopIndex = new Map<number, number>();
-  if (state.loop) state.loop.forEach((c, i) => loopIndex.set(c, i));
-  const picksValid = picks.length > 0 && isValidLine(set, picks, state.tilesLeft);
-  const canPick = (cell: number) =>
-    myActs && !set.has(cell) &&
-    (picks.includes(cell) || (picks.length < Math.min(3, state.tilesLeft) && isValidLine(set, [...picks, cell], state.tilesLeft)));
+  const picksValid =
+    placer.pending.length > 0 && isValidPlacement(state.board, placer.pending, state.tilesLeft);
+  const canPlace = (cell: number) =>
+    myActs &&
+    isValidCells(state.board, [...placer.pending.map((t) => t.cell), cell], state.tilesLeft) &&
+    workBoard(state.board, placer.pending)[cell] === 0;
   const usedTiles = TILES - state.tilesLeft;
 
   return (
@@ -156,44 +159,14 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
         </span>
       </div>
 
-      <div className="ll-board-wrap">
-        <div className="ll-board" style={{ gridTemplateColumns: `repeat(${W}, 1fr)` }}>
-          {Array.from({ length: W * 9 }, (_, cell) => {
-            const isStation = STATIONS.includes(cell as never);
-            const isPlaced = set.has(cell);
-            const isPick = picks.includes(cell);
-            const pickable = canPick(cell);
-            const inLoop = loopIndex.has(cell);
-            const isLast = state.lastMove?.includes(cell);
-            return (
-              <button
-                key={cell}
-                className={[
-                  'll-cell',
-                  isStation ? 'station' : '',
-                  isPlaced && !isStation ? 'placed' : '',
-                  isPick ? 'pick' : '',
-                  pickable && !isPick ? 'pickable' : '',
-                  inLoop ? 'loop' : '',
-                  isLast && !inLoop ? 'last' : '',
-                ].join(' ')}
-                style={inLoop ? { animationDelay: `${(loopIndex.get(cell) ?? 0) * 60}ms` } : undefined}
-                disabled={!pickable}
-                onClick={() => setPicks((p) => (p.includes(cell) ? p.filter((c) => c !== cell) : [...p, cell]))}
-              >
-                {isStation ? (
-                  <StationTile />
-                ) : isPlaced ? (
-                  <RailTile dirs={openDirs(cell, railSet)} variant={inLoop ? 'loop' : 'placed'} />
-                ) : isPick ? (
-                  <RailTile dirs={openDirs(cell, railSet)} variant="preview" />
-                ) : null}
-              </button>
-            );
-          })}
-          {state.loop && <TrainOnLoop loop={state.loop} cellPct={100 / W} />}
-        </div>
-      </div>
+      <RailBoard
+        board={state.board}
+        pending={placer.pending}
+        loop={state.loop}
+        lastMove={state.lastMove}
+        canPlace={canPlace}
+        onCell={placer.clickCell}
+      />
 
       <div className="ll-controls">
         {state.result ? (
@@ -211,14 +184,25 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
             {state.phase === 'attempt' && (
               <p className="ll-msg notice">상대의 불가능 선언! 남은 타일로 완성하면 승리합니다</p>
             )}
+            {placer.notice && <p className="ll-msg notice">{placer.notice}</p>}
+            <TileTray
+              held={placer.held}
+              heldKind={placer.heldKind}
+              onPick={placer.pickKind}
+              onRotate={placer.rotate}
+            />
             <div className="ll-btn-row">
-              <button className="primary-btn" disabled={!picksValid} onClick={() => act({ kind: 'place', line: picks })}>
-                배치 확정 ({picks.length})
+              <button
+                className="primary-btn"
+                disabled={!picksValid}
+                onClick={() => act({ kind: 'place', tiles: placer.pending })}
+              >
+                배치 확정 ({placer.pending.length})
               </button>
-              {picks.length > 0 && (
-                <button className="ghost-btn" onClick={() => setPicks([])}>선택 취소</button>
+              {placer.pending.length > 0 && (
+                <button className="ghost-btn" onClick={placer.clear}>선택 취소</button>
               )}
-              {state.phase === 'play' && picks.length === 0 && (
+              {state.phase === 'play' && placer.pending.length === 0 && (
                 <button className="danger-btn" onClick={() => act({ kind: 'declare' })}>불가능 선언</button>
               )}
               {state.phase === 'attempt' && (
@@ -226,9 +210,9 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
               )}
             </div>
             <p className="ll-hint">
-              {state.phase === 'attempt'
-                ? `남은 타일 ${state.tilesLeft}개로 순환선을 완성하세요 (1~3개씩 일렬)`
-                : '빈 칸을 눌러 타일 1~3개를 일렬로 선택하세요'}
+              타일을 고르고 <b>회전</b>으로 방향을 정한 뒤 빈 칸에 놓으세요 (한 턴에 1~3개,
+              2개 이상이면 일렬). 놓아둔 타일을 다시 누르면 그 자리에서 돌아갑니다.
+              {state.phase === 'attempt' && ` — 남은 타일 ${state.tilesLeft}개로 완성해야 합니다`}
             </p>
           </div>
         ) : (
@@ -257,7 +241,7 @@ export default function LoopLineOnline({ room, onExit }: { room: NetRoom; onExit
             </p>
             <div className="end-actions">
               {room.isHost ? (
-                <button className="primary-btn" onClick={() => { setPicks([]); hostApply(createGame(Math.random() < 0.5 ? 0 : 1)); }}>
+                <button className="primary-btn" onClick={() => { placer.clear(); hostApply(createGame(Math.random() < 0.5 ? 0 : 1)); }}>
                   다시 대전
                 </button>
               ) : (
