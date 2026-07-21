@@ -50,7 +50,7 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
   const [toss, setToss] = useState<PlayerId | null>(null);
 
   function startGame() {
-    setToss(Math.random() < 0.5 ? HUMAN : AI);
+    setToss(0); // 값은 의미 없다 — 선공은 동전을 던져 정해진다
   }
 
   function begin(first: PlayerId) {
@@ -153,10 +153,10 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
   if (toss !== null) {
     return (
       <CoinToss
-        first={toss}
+        mode="call"
         labels={['나', 'AI']}
-        onDone={() => {
-          begin(toss);
+        onDone={(winner) => {
+          begin(winner === 0 ? HUMAN : AI);
           setToss(null);
         }}
       />

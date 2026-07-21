@@ -178,6 +178,7 @@ export default function DarkMazeOnline({ room, onExit }: { room: NetRoom; onExit
   if (toss !== null) {
     return (
       <CoinToss
+        mode="show"
         first={toss === me ? 0 : 1}
         labels={['나', '상대']}
         onDone={() => setToss(null)}
