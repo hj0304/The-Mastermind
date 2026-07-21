@@ -364,9 +364,9 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
     const mine = state.turn === me;
     if (mine && myRoll === null) return; // 내 눈이 정해질 때까지 기다린다
     animShownForRound.current = state.round;
-    const dur = mine ? 2000 : 1500;
     setTimeout(() => setRollAnim(mine ? 'mine' : 'opp'), delay);
-    setTimeout(() => setRollAnim(null), delay + dur);
+    // 내 주사위는 직접 던지므로 오버레이가 스스로 닫는다(onDone)
+    if (!mine) setTimeout(() => setRollAnim(null), delay + 1500);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, myRoll]);
 
@@ -383,6 +383,7 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
   if (toss !== null) {
     return (
       <CoinToss
+        mode="show"
         first={toss === me ? 0 : 1}
         labels={['나', '상대']}
         onDone={() => setToss(null)}
@@ -614,7 +615,12 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
       {banner && !rollAnim && <OutcomeBanner rec={banner} me={me} oppLabel="상대" />}
 
       {rollAnim && (
-        <D10Overlay mine={rollAnim === 'mine'} value={myRoll ?? 0} oppLabel="상대" />
+        <D10Overlay
+          mine={rollAnim === 'mine'}
+          value={myRoll ?? 0}
+          oppLabel="상대"
+          onDone={rollAnim === 'mine' ? () => setRollAnim(null) : undefined}
+        />
       )}
 
       {cheat && (

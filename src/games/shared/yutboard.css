@@ -159,13 +159,31 @@
   clip-path: polygon(50% 0%, 93% 25%, 100% 60%, 75% 100%, 25% 100%, 0% 60%, 7% 25%);
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
 }
-.d10.rolling { animation: d10-spin 0.12s linear infinite; }
-@keyframes d10-spin {
-  0% { transform: rotate(-9deg) scale(1); }
-  50% { transform: rotate(9deg) scale(1.06); }
-  100% { transform: rotate(-9deg) scale(1); }
+.d10.ready { animation: d10-idle 1.6s ease-in-out infinite; }
+@keyframes d10-idle {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-8px) rotate(4deg); }
 }
-.d10.settled { animation: yut-result-pop 0.3s cubic-bezier(0.3, 1.6, 0.6, 1) both; }
+
+/* 굴러가는 주사위 — 던진 세기(--spin, --roll)만큼 더 돌고 더 오래 구른다.
+   결과는 이미 정해져 있으므로 연출만 달라진다 */
+.d10.rolling {
+  animation: d10-tumble var(--roll, 900ms) cubic-bezier(0.2, 0.6, 0.35, 1) forwards;
+}
+@keyframes d10-tumble {
+  0% { transform: translate(-90px, 40px) rotate(0deg) scale(0.85); }
+  25% { transform: translate(-30px, -70px) rotate(calc(220deg * var(--spin, 2))) scale(1.05); }
+  50% { transform: translate(30px, 20px) rotate(calc(430deg * var(--spin, 2))) scale(0.95); }
+  70% { transform: translate(60px, -34px) rotate(calc(610deg * var(--spin, 2))) scale(1.02); }
+  85% { transform: translate(20px, 10px) rotate(calc(700deg * var(--spin, 2))) scale(1); }
+  100% { transform: translate(0, 0) rotate(calc(720deg * var(--spin, 2))) scale(1); }
+}
+.d10.settled { animation: d10-land 0.42s cubic-bezier(0.3, 1.6, 0.6, 1) both; }
+@keyframes d10-land {
+  0% { transform: scale(1.28) rotate(-6deg); }
+  60% { transform: scale(0.94) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
 .d10.hidden-face {
   background: linear-gradient(145deg, #3a4356, #232c42);
   color: #7d8aa5;

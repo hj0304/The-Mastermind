@@ -37,17 +37,41 @@
 .coin.to-heads { animation-name: coin-spin-heads; }
 .coin.to-tails { animation-name: coin-spin-tails; }
 
-/* 5바퀴 = 앞면, 5바퀴 반 = 뒷면 */
+/* 360°의 배수로 끝나면 앞면, +180°면 뒷면.
+   --spin(1~3)은 던진 세기 — 회전 수만 늘릴 뿐 결과에는 영향이 없다 */
 @keyframes coin-spin-heads {
   0% { transform: rotateX(0) translateY(0); }
-  45% { transform: rotateX(900deg) translateY(-120px); }
-  100% { transform: rotateX(1800deg) translateY(0); }
+  45% { transform: rotateX(calc(900deg * var(--spin, 2))) translateY(-140px); }
+  100% { transform: rotateX(calc(1800deg * var(--spin, 2))) translateY(0); }
 }
 @keyframes coin-spin-tails {
   0% { transform: rotateX(0) translateY(0); }
-  45% { transform: rotateX(990deg) translateY(-120px); }
-  100% { transform: rotateX(1980deg) translateY(0); }
+  45% { transform: rotateX(calc(900deg * var(--spin, 2) + 90deg)) translateY(-140px); }
+  100% { transform: rotateX(calc(1800deg * var(--spin, 2) + 180deg)) translateY(0); }
 }
+
+/* 던지기 전 정지 상태 */
+.coin.idle { animation: none; }
+.coin.idle .coin-face.front { transform: none; }
+
+.coin-call { display: flex; gap: 12px; }
+.coin-call-btn {
+  min-width: 108px;
+  padding: 12px 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 217, 121, 0.5);
+  background: linear-gradient(150deg, #ffd979, #d99b27);
+  color: #5b3d06;
+  cursor: pointer;
+}
+.coin-call-btn.tails {
+  border-color: rgba(200, 211, 224, 0.5);
+  background: linear-gradient(150deg, #c8d3e0, #8794a8);
+  color: #2a3240;
+}
+.coin-call-btn:hover { filter: brightness(1.08); }
 
 .coin-face {
   position: absolute;

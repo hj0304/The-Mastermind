@@ -51,7 +51,7 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
   const [toss, setToss] = useState<PlayerId | null>(null);
 
   function startGame() {
-    setToss(Math.random() < 0.5 ? HUMAN : AI);
+    setToss(0); // 값은 의미 없다 — 선공은 동전을 던져 정해진다
   }
 
   function begin(first: PlayerId) {
@@ -81,9 +81,9 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
     if (!state.result && state.phase === 'declare' && animShownForRound.current !== state.round) {
       animShownForRound.current = state.round;
       const kind = state.turn === HUMAN ? 'mine' : 'ai';
-      const dur = state.turn === HUMAN ? 2000 : 1500;
       timers.push(setTimeout(() => setRollAnim(kind), delay));
-      timers.push(setTimeout(() => setRollAnim(null), delay + dur));
+      // 내 주사위는 직접 던지므로 오버레이가 스스로 닫는다(onDone). AI 것만 자동으로 걷는다
+      if (kind === 'ai') timers.push(setTimeout(() => setRollAnim(null), delay + 1500));
     }
     if (timers.length === 0) return;
     return () => timers.forEach(clearTimeout);
@@ -235,10 +235,10 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
   if (toss !== null) {
     return (
       <CoinToss
-        first={toss}
+        mode="call"
         labels={['나', 'AI']}
-        onDone={() => {
-          begin(toss);
+        onDone={(winner) => {
+          begin(winner === 0 ? HUMAN : AI);
           setToss(null);
         }}
       />
@@ -422,7 +422,12 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
 
       {/* 주사위 굴림 연출 */}
       {rollAnim && (
-        <D10Overlay mine={rollAnim === 'mine'} value={state.roll} oppLabel="AI" />
+        <D10Overlay
+          mine={rollAnim === 'mine'}
+          value={state.roll}
+          oppLabel="AI"
+          onDone={rollAnim === 'mine' ? () => setRollAnim(null) : undefined}
+        />
       )}
 
       {phase === 'done' && state.result && (
