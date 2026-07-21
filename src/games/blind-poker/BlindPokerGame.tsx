@@ -11,6 +11,7 @@ import {
 } from './engine.ts';
 import { chooseAiAction, loadOpponentModel, recordGameEnd, recordHandObservations } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import BlindPokerOnline from './BlindPokerOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -32,8 +33,15 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
   const recordedHands = useRef(0);
   const gameRecorded = useRef(false);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
-    setState(createGame());
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
+    setState(createGame(first));
     recordedHands.current = 0;
     gameRecorded.current = false;
     setPhase('playing');
@@ -96,6 +104,19 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
           onCancel={() => setOnline(null)}
         />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 

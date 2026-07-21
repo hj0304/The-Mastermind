@@ -3,6 +3,7 @@ import type { MonoState, PlayerId } from './engine.ts';
 import { createGame, currentPlayer, isTerminal, play, tileColor, winner } from './engine.ts';
 import { chooseAiMove, loadTendency, recordGameEnd, recordHumanPlay } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import MonochromeOnline from './MonochromeOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -28,8 +29,15 @@ export default function MonochromeGame({ onExit }: Props) {
   const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const gameEndRecorded = useRef(false);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
-    const firstLeader: PlayerId = Math.random() < 0.5 ? HUMAN : AI;
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
+    const firstLeader: PlayerId = first;
     setState(createGame(firstLeader));
     gameEndRecorded.current = false;
     setLastResultFlash(null);
@@ -102,6 +110,19 @@ export default function MonochromeGame({ onExit }: Props) {
           onCancel={() => setOnline(null)}
         />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 

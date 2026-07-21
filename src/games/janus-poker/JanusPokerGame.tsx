@@ -14,6 +14,7 @@ import {
   recordResponse,
 } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import JanusPokerOnline from './JanusPokerOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -37,8 +38,15 @@ export default function JanusPokerGame({ onExit }: { onExit: () => void }) {
   const recorded = useRef(false);
   const learnedHand = useRef(0);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
-    setState(createGame(Math.random() < 0.5 ? HUMAN : AI));
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
+    setState(createGame(first));
     setPickedFace(null);
     setLevel(1);
     setPeek(false);
@@ -129,6 +137,19 @@ export default function JanusPokerGame({ onExit }: { onExit: () => void }) {
           onCancel={() => setOnline(null)}
         />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 

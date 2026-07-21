@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { BpAction, BpState, PlayerId } from './engine.ts';
 import { act, createGame, gameWinner, legalInfo, nextHand, potSize, seenCards } from './engine.ts';
 import type { NetRoom } from '../../net/room.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import './blindpoker.css';
 import '../../net/online.css';
 
@@ -21,7 +22,10 @@ interface BpView {
   myCardShown: boolean;
 }
 
-type NetMsg = { t: 'ready' } | { t: 'view'; v: BpView } | { t: 'act'; a: BpAction } | { t: 'next' };
+type NetMsg =
+  /** 선공 동전 결과 (호스트가 정해 알린다) */
+  | { t: 'toss'; first: PlayerId }
+  | { t: 'ready' } | { t: 'view'; v: BpView } | { t: 'act'; a: BpAction } | { t: 'next' };
 
 function viewFor(s: BpState, seat: PlayerId): BpView {
   const revealed = s.phase !== 'betting';
@@ -36,6 +40,10 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
   const stateRef = useRef<BpState | null>(null);
   const [view, setView] = useState<BpView | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
+  /** 선공 동전 - 양쪽이 같은 결과를 본다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+  /** 마지막 동전 결과 — 게스트가 늦게 들어오면 다시 보낸다 */
+  const lastToss = useRef<PlayerId | null>(null);
 
   function hostApply(next: BpState) {
     stateRef.current = next;
@@ -52,9 +60,26 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
     }
   }
 
+  /** (호스트) 선공을 뽑아 양쪽에 동전을 띄운다 */
+  function tossFirst(): PlayerId {
+    const first: PlayerId = Math.random() < 0.5 ? 0 : 1;
+    lastToss.current = first;
+    room.send({ t: 'toss', first } satisfies NetMsg);
+    setToss(first);
+    return first;
+  }
+
   useEffect(() => {
     const offMsg = room.onMsg((raw) => {
       const msg = raw as NetMsg;
+      if (msg.t === 'toss') {
+        setToss(msg.first);
+        return;
+      }
+      // 호스트가 게스트 입장 전에 보낸 동전은 버려지므로 다시 알린다
+      if (room.isHost && msg.t === 'ready' && lastToss.current !== null) {
+        room.send({ t: 'toss', first: lastToss.current } satisfies NetMsg);
+      }
       if (room.isHost) {
         const s = stateRef.current;
         if (!s) return;
@@ -75,7 +100,7 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
     const offPeers = room.onPeers((count) => {
       if (count === 0) setOppLeft(true);
     });
-    if (room.isHost) hostApply(createGame());
+    if (room.isHost) hostApply(createGame(tossFirst()));
     else room.send({ t: 'ready' } satisfies NetMsg);
     return () => {
       offMsg();
@@ -107,6 +132,16 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
     } else {
       room.send({ t: 'next' } satisfies NetMsg);
     }
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss === me ? 0 : 1}
+        labels={['나', '상대']}
+        onDone={() => setToss(null)}
+      />
+    );
   }
 
   if (!view) {
@@ -250,7 +285,7 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
             </p>
             <div className="end-actions">
               {room.isHost ? (
-                <button className="primary-btn" onClick={() => hostApply(createGame())}>다시 대전</button>
+                <button className="primary-btn" onClick={() => hostApply(createGame(tossFirst()))}>다시 대전</button>
               ) : (
                 <p className="online-hint">호스트가 재대결을 시작할 수 있습니다</p>
               )}

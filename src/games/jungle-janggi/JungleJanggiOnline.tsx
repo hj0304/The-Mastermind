@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { JState, Move, PieceType, PlayerId } from './engine.ts';
 import { COLS, ROWS, applyMove, createGame, idx, legalMoves } from './engine.ts';
 import type { NetRoom } from '../../net/room.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import './jungle.css';
 import '../../net/online.css';
 
@@ -11,7 +12,10 @@ import '../../net/online.css';
  * 보드는 좌석별로 뒤집어 렌더링해 양쪽 모두 자기 진영이 아래에 오게 한다.
  */
 
-type NetMsg = { t: 'ready' } | { t: 'state'; s: JState } | { t: 'act'; m: Move };
+type NetMsg =
+  /** 선공 동전 결과 (호스트가 정해 알린다) */
+  | { t: 'toss'; first: PlayerId }
+  | { t: 'ready' } | { t: 'state'; s: JState } | { t: 'act'; m: Move };
 
 const PIECE_CHAR: Record<PieceType, string> = { K: '王', G: '將', E: '相', C: '子', H: '侯' };
 const PIECE_NAME: Record<PieceType, string> = { K: '왕', G: '장', E: '상', C: '자', H: '후' };
@@ -25,6 +29,10 @@ export default function JungleJanggiOnline({ room, onExit }: { room: NetRoom; on
   const [state, setState] = useState<JState | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
   const [oppLeft, setOppLeft] = useState(false);
+  /** 선공 동전 - 양쪽이 같은 결과를 본다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+  /** 마지막 동전 결과 — 게스트가 늦게 들어오면 다시 보낸다 */
+  const lastToss = useRef<PlayerId | null>(null);
 
   function hostApply(next: JState) {
     stateRef.current = next;
@@ -49,9 +57,26 @@ export default function JungleJanggiOnline({ room, onExit }: { room: NetRoom; on
     }
   }
 
+  /** (호스트) 선공을 뽑아 양쪽에 동전을 띄운다 */
+  function tossFirst(): PlayerId {
+    const first: PlayerId = Math.random() < 0.5 ? 0 : 1;
+    lastToss.current = first;
+    room.send({ t: 'toss', first } satisfies NetMsg);
+    setToss(first);
+    return first;
+  }
+
   useEffect(() => {
     const offMsg = room.onMsg((raw) => {
       const msg = raw as NetMsg;
+      if (msg.t === 'toss') {
+        setToss(msg.first);
+        return;
+      }
+      // 호스트가 게스트 입장 전에 보낸 동전은 버려지므로 다시 알린다
+      if (room.isHost && msg.t === 'ready' && lastToss.current !== null) {
+        room.send({ t: 'toss', first: lastToss.current } satisfies NetMsg);
+      }
       if (room.isHost) {
         if (msg.t === 'ready' && stateRef.current) {
           room.send({ t: 'state', s: stateRef.current } satisfies NetMsg);
@@ -69,7 +94,7 @@ export default function JungleJanggiOnline({ room, onExit }: { room: NetRoom; on
       if (count === 0) setOppLeft(true);
     });
     if (room.isHost) {
-      hostApply(createGame(Math.random() < 0.5 ? 0 : 1));
+      hostApply(createGame(tossFirst()));
     } else {
       room.send({ t: 'ready' } satisfies NetMsg);
     }
@@ -97,6 +122,16 @@ export default function JungleJanggiOnline({ room, onExit }: { room: NetRoom; on
       room.send({ t: 'act', m } satisfies NetMsg);
       setSelection(null);
     }
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss === me ? 0 : 1}
+        labels={['나', '상대']}
+        onDone={() => setToss(null)}
+      />
+    );
   }
 
   if (!state) {
@@ -216,7 +251,7 @@ export default function JungleJanggiOnline({ room, onExit }: { room: NetRoom; on
             </p>
             <div className="end-actions">
               {room.isHost ? (
-                <button className="primary-btn" onClick={() => { setSelection(null); hostApply(createGame(Math.random() < 0.5 ? 0 : 1)); }}>
+                <button className="primary-btn" onClick={() => { setSelection(null); hostApply(createGame(tossFirst())); }}>
                   다시 대전
                 </button>
               ) : (

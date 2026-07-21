@@ -13,6 +13,7 @@ import {
 } from './engine.ts';
 import { chooseAiAction, recordGameEnd } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import LoopLineOnline from './LoopLineOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -45,8 +46,15 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
   const attemptMode = state?.phase === 'attempt';
   const placer = usePlacer(board, state?.tilesLeft ?? 0, humanActsNow, attemptMode);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
-    setState(createGame(Math.random() < 0.5 ? HUMAN : AI));
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
+    setState(createGame(first));
     placer.clear();
     setNotice(null);
     recorded.current = false;
@@ -139,6 +147,19 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
           onCancel={() => setOnline(null)}
         />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 

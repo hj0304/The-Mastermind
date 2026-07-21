@@ -3,6 +3,7 @@ import type { Move, PlayerId, RfState } from './engine.ts';
 import { COLS, ROWS, applyMove, colOf, createGame, legalMoves, rowOf } from './engine.ts';
 import { chooseAiMove } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import { CELL, DIR_ARROW, PieceGfx, rotLabel } from './pieces.tsx';
 import ReflectOnline from './ReflectOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -23,8 +24,15 @@ export default function ReflectGame({ onExit }: { onExit: () => void }) {
   const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
-    setState(createGame(Math.random() < 0.5 ? HUMAN : AI));
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
+    setState(createGame(first));
     setSelected(null);
     setAiInfo(null);
     recorded.current = false;
@@ -103,6 +111,19 @@ export default function ReflectGame({ onExit }: { onExit: () => void }) {
           onCancel={() => setOnline(null)}
         />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 

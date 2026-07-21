@@ -13,6 +13,7 @@ import { PlayerTray } from './tray.tsx';
 import YutBoard from '../shared/YutBoard.tsx';
 import type { BoardPiece } from '../shared/YutBoard.tsx';
 import type { NetRoom } from '../../net/room.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import { makeCommitment, verifyCommitment } from '../../net/commit.ts';
 import './yut.css';
 import '../../net/online.css';
@@ -42,6 +43,8 @@ interface Reveal {
 type YAction = { k: 'move'; opt: MoveOption };
 
 type NetMsg =
+  /** 선공 동전 결과 (호스트가 정해 알린다) */
+  | { t: 'toss'; first: PlayerId }
   | { t: 'ready' }
   | { t: 'state'; s: YState }
   /** 선택 해시 (값은 감춰져 있다) */
@@ -63,6 +66,10 @@ export default function YutTacticsOnline({ room, onExit }: { room: NetRoom; onEx
   const [reveal, setReveal] = useState<Reveal | null>(null);
   const [myPickSent, setMyPickSent] = useState(false);
   const [oppLeft, setOppLeft] = useState(false);
+  /** 선공 동전 - 양쪽이 같은 결과를 본다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+  /** 마지막 동전 결과 — 게스트가 늦게 들어오면 다시 보낸다 */
+  const lastToss = useRef<PlayerId | null>(null);
 
   /** 이번 던지기의 커밋-리빌 진행 상황 */
   const round = useRef<{
@@ -142,9 +149,26 @@ export default function YutTacticsOnline({ room, onExit }: { room: NetRoom; onEx
     }
   }
 
+  /** (호스트) 선공을 뽑아 양쪽에 동전을 띄운다 */
+  function tossFirst(): PlayerId {
+    const first: PlayerId = Math.random() < 0.5 ? 0 : 1;
+    lastToss.current = first;
+    room.send({ t: 'toss', first } satisfies NetMsg);
+    setToss(first);
+    return first;
+  }
+
   useEffect(() => {
     const offMsg = room.onMsg((raw) => {
       const msg = raw as NetMsg;
+      if (msg.t === 'toss') {
+        setToss(msg.first);
+        return;
+      }
+      // 호스트가 게스트 입장 전에 보낸 동전은 버려지므로 다시 알린다
+      if (room.isHost && msg.t === 'ready' && lastToss.current !== null) {
+        room.send({ t: 'toss', first: lastToss.current } satisfies NetMsg);
+      }
 
       // 커밋-리빌은 양쪽이 대칭으로 처리한다
       if (msg.t === 'commit') {
@@ -182,7 +206,7 @@ export default function YutTacticsOnline({ room, onExit }: { room: NetRoom; onEx
     const offPeers = room.onPeers((c) => {
       if (c === 0) setOppLeft(true);
     });
-    if (room.isHost) hostSend(createGame(Math.random() < 0.5 ? 0 : 1));
+    if (room.isHost) hostSend(createGame(tossFirst()));
     else room.send({ t: 'ready' } satisfies NetMsg);
     return () => {
       offMsg();
@@ -214,6 +238,16 @@ export default function YutTacticsOnline({ room, onExit }: { room: NetRoom; onEx
       room.send({ t: 'commit', h: hash } satisfies NetMsg);
       maybeOpen();
     });
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss === me ? 0 : 1}
+        labels={['나', '상대']}
+        onDone={() => setToss(null)}
+      />
+    );
   }
 
   if (!state) {
@@ -439,7 +473,7 @@ export default function YutTacticsOnline({ room, onExit }: { room: NetRoom; onEx
                   className="primary-btn"
                   onClick={() => {
                     resetRound();
-                    hostSend(createGame(Math.random() < 0.5 ? 0 : 1));
+                    hostSend(createGame(tossFirst()));
                   }}
                 >
                   다시 대전

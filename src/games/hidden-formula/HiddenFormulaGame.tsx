@@ -24,6 +24,7 @@ import {
   recordRound,
 } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import { AnswerClock, HintList, ProblemBar } from './parts.tsx';
 import HiddenFormulaOnline from './HiddenFormulaOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -54,8 +55,15 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
   const recordedRound = useRef('');
   const recorded = useRef(false);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
-    const s = createGame(Math.random() < 0.5 ? HUMAN : AI);
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
+    const s = createGame(first);
     considered.current = pickConsidered();
     roundRef.current = 1;
     windowKeyRef.current = '';
@@ -270,6 +278,19 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
           onCancel={() => setOnline(null)}
         />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 

@@ -15,6 +15,7 @@ import {
 import { viewFor } from './view.ts';
 import { Board, DeadTray, typeLabel } from './board.tsx';
 import type { NetRoom } from '../../net/room.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import './numberjanggi.css';
 import '../../net/online.css';
 
@@ -31,6 +32,8 @@ type Placement = Array<{ cell: number; piece: NPiece }>;
 type NAction = { k: 'move'; from: number; to: number } | { k: 'revive'; pieceId: number | null };
 
 type NetMsg =
+  /** 선공 동전 결과 (호스트가 정해 알린다) */
+  | { t: 'toss'; first: PlayerId }
   | { t: 'ready' }
   | { t: 'placed'; p: Placement }
   | { t: 'view'; v: NState }
@@ -48,6 +51,10 @@ export default function NumberJanggiOnline({ room, onExit }: { room: NetRoom; on
   const [state, setState] = useState<NState | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
+  /** 선공 동전 - 양쪽이 같은 결과를 본다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+  /** 마지막 동전 결과 — 게스트가 늦게 들어오면 다시 보낸다 */
+  const lastToss = useRef<PlayerId | null>(null);
 
   const stateRef = useRef<NState | null>(null);
   /** 호스트가 모아두는 양쪽 배치 */
@@ -66,7 +73,7 @@ export default function NumberJanggiOnline({ room, onExit }: { room: NetRoom; on
   function hostTryStart() {
     const { host, guest } = placements.current;
     if (!host || !guest || stateRef.current) return;
-    hostApply(createGame(host, guest, Math.random() < 0.5 ? 0 : 1));
+    hostApply(createGame(host, guest, tossFirst()));
   }
 
   function hostAct(s: NState, actor: PlayerId, a: NAction): NState | null {
@@ -88,9 +95,26 @@ export default function NumberJanggiOnline({ room, onExit }: { room: NetRoom; on
     }
   }
 
+  /** (호스트) 선공을 뽑아 양쪽에 동전을 띄운다 */
+  function tossFirst(): PlayerId {
+    const first: PlayerId = Math.random() < 0.5 ? 0 : 1;
+    lastToss.current = first;
+    room.send({ t: 'toss', first } satisfies NetMsg);
+    setToss(first);
+    return first;
+  }
+
   useEffect(() => {
     const offMsg = room.onMsg((raw) => {
       const msg = raw as NetMsg;
+      if (msg.t === 'toss') {
+        setToss(msg.first);
+        return;
+      }
+      // 호스트가 게스트 입장 전에 보낸 동전은 버려지므로 다시 알린다
+      if (room.isHost && msg.t === 'ready' && lastToss.current !== null) {
+        room.send({ t: 'toss', first: lastToss.current } satisfies NetMsg);
+      }
       if (room.isHost) {
         if (msg.t === 'ready' && stateRef.current) {
           room.send({ t: 'view', v: viewFor(stateRef.current, 1) } satisfies NetMsg);
@@ -144,6 +168,17 @@ export default function NumberJanggiOnline({ room, onExit }: { room: NetRoom; on
       room.send({ t: 'act', a } satisfies NetMsg);
     }
     setSelected(null);
+  }
+
+  // 양쪽 배치가 끝나면 호스트가 선공을 뽑고, 그 동전을 양쪽이 함께 본다
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss === me ? 0 : 1}
+        labels={['나', '상대']}
+        onDone={() => setToss(null)}
+      />
+    );
   }
 
   // ---------- 배치 단계 ----------

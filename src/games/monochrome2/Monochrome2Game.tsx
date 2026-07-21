@@ -3,6 +3,7 @@ import type { M2State, PlayerId } from './engine.ts';
 import { bidColor, createGame, currentPlayer, play } from './engine.ts';
 import { chooseAiBid, recordContestForLearning, recordGameEnd } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import { Gauge } from './gauge.tsx';
 import Monochrome2Online from './Monochrome2Online.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -23,8 +24,15 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
   const [flash, setFlash] = useState<string | null>(null);
   const recorded = useRef(false);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
-    setState(createGame(Math.random() < 0.5 ? HUMAN : AI));
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
+    setState(createGame(first));
     setBidInput(0);
     recorded.current = false;
     setPhase('playing');
@@ -94,6 +102,19 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
         <GameHeader onExit={onExit} />
         <OnlinePanel gameName="모노크롬 II" onReady={(room) => setOnline(room)} onCancel={() => setOnline(null)} />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 
