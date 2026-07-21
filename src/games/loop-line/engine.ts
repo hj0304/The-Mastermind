@@ -7,6 +7,15 @@
  * 순환선(놓인 타일 전부 포함)을 완성하는 마지막 타일을 놓는 쪽이 승리.
  * 자기 턴 시작 시 '불가능' 선언 가능 → 상대가 남은 타일로 완성하면 상대 승.
  *
+ * **타일의 방향**: 타일은 양면(앞=직선, 뒤=ㄱ자)이고 놓을 때 면과 방향을 정하며,
+ * 한 번 놓으면 바뀌지 않는다. 원류 룰의 두 조항이 이 처리의 근거다.
+ *   - "Only the tiles must be connected, not the course of the canal"
+ *     → 수로 끝이 빈 칸을 향하는 것은 자유(아직 이어지지 않아도 된다)
+ *   - "Tiles must not be laid in such a manner as to block the canal"
+ *     → 이미 놓인 타일과 맞닿는 모서리를 어긋나게 놓는 것은 반칙
+ * 그래서 배치 판정은 fits()의 모서리 일치 검사이고, 승리 판정은 칸 배치가 아니라
+ * **실제 수로가 이어져 하나의 고리를 이루는가**로 한다.
+ *
  * 판은 13×9로 유한(실물 테이블의 유한성 반영). 기차역은 중앙에 고정.
  */
 
@@ -15,6 +24,25 @@ export type PlayerId = 0 | 1;
 export const W = 13;
 export const H = 9;
 export const TILES = 16;
+
+/** 수로가 열린 방향 비트 */
+export const N = 1;
+export const E = 2;
+export const S = 4;
+export const WST = 8;
+
+/** 직선 2가지 + ㄱ자 4가지 = 타일이 가질 수 있는 모든 모양 */
+export const STRAIGHT_H = E | WST; // ─
+export const STRAIGHT_V = N | S; // │
+export const CURVE_NE = N | E; // └
+export const CURVE_ES = E | S; // ┌
+export const CURVE_SW = S | WST; // ┐
+export const CURVE_WN = WST | N; // ┘
+export const ALL_MASKS = [STRAIGHT_H, STRAIGHT_V, CURVE_NE, CURVE_ES, CURVE_SW, CURVE_WN];
+
+/** 회전 순서 (UI의 회전 버튼이 도는 순서) */
+export const STRAIGHT_CYCLE = [STRAIGHT_H, STRAIGHT_V];
+export const CURVE_CYCLE = [CURVE_NE, CURVE_ES, CURVE_SW, CURVE_WN];
 
 /** 기차역 2칸 (가로 나란히, 순환선이 좌우로 통과해야 함) */
 export const STATIONS: [number, number] = [4 * W + 5, 4 * W + 6];
@@ -33,130 +61,175 @@ export function neighbors4(cell: number): number[] {
   return out;
 }
 
-// ---------- 순환선 판정 ----------
+/** 방향 비트 → 이웃 칸 (판 밖이면 -1) */
+export function step(cell: number, bit: number): number {
+  const [r, c] = rc(cell);
+  if (bit === N) return r > 0 ? cell - W : -1;
+  if (bit === S) return r < H - 1 ? cell + W : -1;
+  if (bit === E) return c < W - 1 ? cell + 1 : -1;
+  if (bit === WST) return c > 0 ? cell - 1 : -1;
+  return -1;
+}
+
+export function opposite(bit: number): number {
+  if (bit === N) return S;
+  if (bit === S) return N;
+  if (bit === E) return WST;
+  return E;
+}
+
+/** 마스크에서 열린 방향 비트들 */
+export function openBits(mask: number): number[] {
+  const out: number[] = [];
+  for (const b of [N, E, S, WST]) if (mask & b) out.push(b);
+  return out;
+}
+
+// ---------- 판 ----------
+
+/** board[cell] = 0(빈칸) 또는 열린 방향 마스크 */
+export type Board = number[];
+
+export function emptyBoard(): Board {
+  return new Array(W * H).fill(0);
+}
+
+export function placedCells(board: Board): number[] {
+  const out: number[] = [];
+  for (let c = 0; c < board.length; c++) if (board[c] !== 0) out.push(c);
+  return out;
+}
 
 /**
- * 놓인 타일 전체가 하나의 순환선인가:
- * 모든 칸의 차수가 정확히 2, 전체 연결, 기차역은 좌우로 통과.
+ * cell에 mask로 놓을 수 있는가 — 맞닿는 타일과 모서리가 일치해야 한다.
+ * (빈 칸·판 밖을 향해 열린 것은 자유)
  */
-export function isLoop(cells: Set<number>): boolean {
-  if (cells.size < 4) return false;
+export function fits(board: Board, cell: number, mask: number): boolean {
+  if (board[cell] !== 0) return false;
+  for (const b of [N, E, S, WST]) {
+    const n = step(cell, b);
+    if (n < 0) continue;
+    const nm = board[n];
+    if (nm === 0) continue; // 빈 칸 — 아직 이어질 필요 없다
+    const mineOpen = (mask & b) !== 0;
+    const theirsOpen = (nm & opposite(b)) !== 0;
+    if (mineOpen !== theirsOpen) return false; // 수로를 막는 배치
+  }
+  return true;
+}
+
+/** cell에 놓을 수 있는 모든 방향 */
+export function legalMasks(board: Board, cell: number): number[] {
+  return ALL_MASKS.filter((m) => fits(board, cell, m));
+}
+
+/** 놓인 타일 전부가 이어져 하나의 순환선을 이루는가 */
+export function isLoop(board: Board): boolean {
+  const cells = placedCells(board);
+  if (cells.length < 4) return false;
+  // 열린 수로가 빈 칸/판 밖을 향하면 아직 미완성
   for (const c of cells) {
-    let deg = 0;
-    for (const n of neighbors4(c)) if (cells.has(n)) deg++;
-    if (deg !== 2) return false;
+    for (const b of openBits(board[c])) {
+      const n = step(c, b);
+      if (n < 0 || board[n] === 0) return false;
+    }
   }
-  // 기차역 좌우 통과: 역의 양 이웃이 가로여야 함
-  for (const st of STATIONS) {
-    if (!cells.has(st - 1) || !cells.has(st + 1)) return false;
-  }
-  // 연결성
+  // 모든 타일의 차수가 2이므로, 전부 연결되어 있으면 하나의 고리다
   const seen = new Set<number>([STATIONS[0]]);
   const q = [STATIONS[0]];
   while (q.length) {
     const u = q.pop()!;
-    for (const n of neighbors4(u)) {
-      if (cells.has(n) && !seen.has(n)) {
+    for (const b of openBits(board[u])) {
+      const n = step(u, b);
+      if (n >= 0 && board[n] !== 0 && !seen.has(n)) {
         seen.add(n);
         q.push(n);
       }
     }
   }
-  return seen.size === cells.size;
+  return seen.size === cells.length;
 }
 
 /** 완성된 순환선의 사이클 순서 (렌더용). isLoop 전제. */
-export function traceLoop(cells: Set<number>): number[] {
+export function traceLoop(board: Board): number[] {
   const start = STATIONS[0];
   const order = [start];
   let prev = -1;
   let cur = start;
   do {
     let next = -1;
-    for (const n of neighbors4(cur)) {
-      if (cells.has(n) && n !== prev) {
+    for (const b of openBits(board[cur])) {
+      const n = step(cur, b);
+      if (n !== prev) {
         next = n;
         break;
       }
     }
     prev = cur;
     cur = next;
-    if (cur !== start) order.push(cur);
-  } while (cur !== start && order.length <= cells.size + 1);
+    if (cur !== start && cur >= 0) order.push(cur);
+  } while (cur !== start && cur >= 0 && order.length <= placedCells(board).length + 1);
   return order;
 }
 
 // ---------- 배치 ----------
 
-/**
- * 가능한 라인 배치 전부 열거: 연속된 빈 칸 1~maxLen개의 일렬이며,
- * 그중 최소 한 칸이 기존 타일에 상하좌우로 맞닿아야 한다.
- */
-export function legalLines(placed: Set<number>, maxLen: number): number[][] {
-  const out: number[][] = [];
-  const seen = new Set<string>();
-  const frontier = new Set<number>();
-  for (const p of placed) for (const n of neighbors4(p)) if (!placed.has(n)) frontier.add(n);
-
-  const push = (line: number[]) => {
-    const key = [...line].sort((a, b) => a - b).join(',');
-    if (!seen.has(key)) {
-      seen.add(key);
-      out.push(line);
-    }
-  };
-
-  for (const f of frontier) {
-    push([f]);
-    if (maxLen < 2) continue;
-    const [r, c] = rc(f);
-    // f를 포함하는 가로/세로 연속 빈칸 라인 (f가 어느 위치든 가능)
-    for (const [dr, dc] of [[0, 1], [1, 0]] as const) {
-      for (let len = 2; len <= maxLen; len++) {
-        for (let off = -(len - 1); off <= 0; off++) {
-          const line: number[] = [];
-          let ok = true;
-          for (let i = 0; i < len; i++) {
-            const rr = r + dr * (off + i);
-            const cc = c + dc * (off + i);
-            if (rr < 0 || rr >= H || cc < 0 || cc >= W) { ok = false; break; }
-            const cell = rr * W + cc;
-            if (placed.has(cell)) { ok = false; break; }
-            line.push(cell);
-          }
-          if (ok) push(line);
-        }
-      }
-    }
-  }
-  return out;
+/** 한 번에 놓는 타일들 */
+export interface Tile {
+  cell: number;
+  mask: number;
 }
 
-/** 라인 배치 유효성 (UI/엔진 공용) */
-export function isValidLine(placed: Set<number>, line: number[], tilesLeft: number): boolean {
-  if (line.length < 1 || line.length > 3 || line.length > tilesLeft) return false;
-  const uniq = new Set(line);
-  if (uniq.size !== line.length) return false;
-  for (const cell of line) {
-    if (cell < 0 || cell >= W * H || placed.has(cell)) return false;
+/** 칸 배열이 1~3개의 일렬이며 기존 타일에 맞닿는가 (방향과 무관한 위치 조건) */
+export function isValidCells(board: Board, cells: number[], tilesLeft: number): boolean {
+  if (cells.length < 1 || cells.length > 3 || cells.length > tilesLeft) return false;
+  const uniq = new Set(cells);
+  if (uniq.size !== cells.length) return false;
+  for (const cell of cells) {
+    if (cell < 0 || cell >= W * H || board[cell] !== 0) return false;
   }
-  if (line.length > 1) {
-    const rows = line.map((c) => rc(c)[0]);
-    const cols = line.map((c) => rc(c)[1]);
+  if (cells.length > 1) {
+    const rows = cells.map((c) => rc(c)[0]);
+    const cols = cells.map((c) => rc(c)[1]);
     const sameRow = rows.every((r) => r === rows[0]);
     const sameCol = cols.every((c) => c === cols[0]);
     if (!sameRow && !sameCol) return false;
     const axis = (sameRow ? cols : rows).slice().sort((a, b) => a - b);
     for (let i = 1; i < axis.length; i++) if (axis[i] !== axis[i - 1] + 1) return false;
   }
-  // 최소 한 칸이 기존 타일에 맞닿아야 함
-  return line.some((cell) => neighbors4(cell).some((n) => placed.has(n)));
+  return cells.some((cell) => neighbors4(cell).some((n) => board[n] !== 0));
+}
+
+/** 타일 묶음 배치의 유효성 (위치 + 방향 모두) */
+export function isValidPlacement(board: Board, tiles: Tile[], tilesLeft: number): boolean {
+  if (!isValidCells(board, tiles.map((t) => t.cell), tilesLeft)) return false;
+  const tmp = board.slice();
+  for (const t of tiles) {
+    if (!ALL_MASKS.includes(t.mask)) return false;
+    if (!fits(tmp, t.cell, t.mask)) return false;
+    tmp[t.cell] = t.mask;
+  }
+  return true;
+}
+
+/**
+ * 놓을 자리가 있는 칸들 (프론티어) — 방향은 별도로 고른다.
+ * 한 칸이라도 놓을 방향이 없으면(맞닿은 타일 3면 이상이 열림 등) 제외한다.
+ */
+export function frontier(board: Board): number[] {
+  const out = new Set<number>();
+  for (const p of placedCells(board)) {
+    for (const n of neighbors4(p)) {
+      if (board[n] === 0 && legalMasks(board, n).length > 0) out.add(n);
+    }
+  }
+  return [...out];
 }
 
 // ---------- 상태 ----------
 
 export interface LLState {
-  placed: number[]; // 정렬된 칸 목록 (기차역 포함)
+  board: Board;
   tilesLeft: number;
   turn: PlayerId;
   phase: 'play' | 'attempt' | 'gameover';
@@ -169,8 +242,12 @@ export interface LLState {
 }
 
 export function createGame(first: PlayerId): LLState {
+  const board = emptyBoard();
+  // 기차역은 양끝으로 철로가 열린 가로 타일
+  board[STATIONS[0]] = STRAIGHT_H;
+  board[STATIONS[1]] = STRAIGHT_H;
   return {
-    placed: [...STATIONS].sort((a, b) => a - b),
+    board,
     tilesLeft: TILES,
     turn: first,
     phase: 'play',
@@ -181,27 +258,23 @@ export function createGame(first: PlayerId): LLState {
   };
 }
 
-export function placedSet(s: LLState): Set<number> {
-  return new Set(s.placed);
-}
-
-/** 타일 라인 배치 (play/attempt 공용) */
-export function applyPlace(s: LLState, line: number[]): LLState {
+/** 타일 배치 (play/attempt 공용) */
+export function applyPlace(s: LLState, tiles: Tile[]): LLState {
   if (s.phase !== 'play' && s.phase !== 'attempt') throw new Error('bad phase');
-  const set = placedSet(s);
-  if (!isValidLine(set, line, s.tilesLeft)) throw new Error('invalid line');
-  for (const c of line) set.add(c);
-  const placed = [...set].sort((a, b) => a - b);
-  const tilesLeft = s.tilesLeft - line.length;
+  if (!isValidPlacement(s.board, tiles, s.tilesLeft)) throw new Error('invalid placement');
+  const board = s.board.slice();
+  for (const t of tiles) board[t.cell] = t.mask;
+  const tilesLeft = s.tilesLeft - tiles.length;
   const mover = s.phase === 'attempt' ? s.attempter! : s.turn;
+  const lastMove = tiles.map((t) => t.cell);
 
-  if (isLoop(set)) {
+  if (isLoop(board)) {
     return {
       ...s,
-      placed,
+      board,
       tilesLeft,
-      lastMove: line,
-      loop: traceLoop(set),
+      lastMove,
+      loop: traceLoop(board),
       phase: 'gameover',
       result: { winner: mover, reason: 'complete' },
     };
@@ -211,16 +284,16 @@ export function applyPlace(s: LLState, line: number[]): LLState {
     if (tilesLeft === 0) {
       return {
         ...s,
-        placed,
+        board,
         tilesLeft,
-        lastMove: line,
+        lastMove,
         phase: 'gameover',
         result: { winner: (1 - s.attempter!) as PlayerId, reason: 'declare' },
       };
     }
-    return { ...s, placed, tilesLeft, lastMove: line };
+    return { ...s, board, tilesLeft, lastMove };
   }
-  return { ...s, placed, tilesLeft, lastMove: line, turn: (1 - s.turn) as PlayerId };
+  return { ...s, board, tilesLeft, lastMove, turn: (1 - s.turn) as PlayerId };
 }
 
 /** 불가능 선언 (자기 턴 시작 시) → 상대가 남은 타일로 완성 시도 */
