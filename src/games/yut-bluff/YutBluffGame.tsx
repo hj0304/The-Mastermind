@@ -20,6 +20,7 @@ import {
   recordHumanReveal,
 } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import { D10Overlay, OutcomeBanner, PlayerTray } from './parts.tsx';
 import YutBluffOnline from './YutBluffOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -46,8 +47,15 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
   const animShownForRound = useRef(-1);
   const bannerShownForLen = useRef(0);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
-    setState(createGame(Math.random() < 0.5 ? HUMAN : AI));
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
+    setState(createGame(first));
     setSelected(null);
     setPendingValue(null);
     setBanner(null);
@@ -221,6 +229,19 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
           onCancel={() => setOnline(null)}
         />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 

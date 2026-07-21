@@ -77,14 +77,15 @@ function freshDeck(): number[] {
   return deck;
 }
 
-export function createGame(): BpState {
+/** first를 주면 그 쪽이 첫 핸드의 선 (동전 던지기 결과) */
+export function createGame(first?: PlayerId): BpState {
   const base: BpState = {
     deck: freshDeck(),
     stacks: [STARTING_STACK, STARTING_STACK],
     cards: [0, 0],
     invested: [0, 0],
     carried: 0,
-    firstActor: Math.random() < 0.5 ? 0 : 1,
+    firstActor: first ?? (Math.random() < 0.5 ? 0 : 1),
     toAct: 0,
     phase: 'betting',
     handNo: 0,

@@ -15,6 +15,7 @@ import {
 } from './engine.ts';
 import { aiChooseAction, aiChooseOpen, aiWantsMulligan } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import { CardBack, CardView, COLOR_NAME } from './cards.tsx';
 import QuattroOnline from './QuattroOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -35,8 +36,15 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
   const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
-    setState(createGame(Math.random() < 0.5 ? HUMAN : AI));
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
+    setState(createGame(first));
     setSelectedCard(null);
     setNotice(null);
     recorded.current = false;
@@ -148,6 +156,19 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
           onCancel={() => setOnline(null)}
         />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 

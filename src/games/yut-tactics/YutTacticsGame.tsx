@@ -12,6 +12,7 @@ import {
 } from './engine.ts';
 import { chooseAiMove, chooseAiSticks, recordGameEnd, recordPickForLearning } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import YutBoard from '../shared/YutBoard.tsx';
 import type { BoardPiece } from '../shared/YutBoard.tsx';
 import { PlayerTray } from './tray.tsx';
@@ -42,8 +43,15 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
   const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
-    setState(createGame(Math.random() < 0.5 ? HUMAN : AI));
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
+    setState(createGame(first));
     setSelectedStep(0);
     setSelectedFrom(null);
     setReveal(null);
@@ -163,6 +171,19 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
         <GameHeader onExit={onExit} />
         <OnlinePanel gameName="윷 대전" onReady={(room) => setOnline(room)} onCancel={() => setOnline(null)} />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 

@@ -13,6 +13,7 @@ import {
 } from './engine.ts';
 import { chooseAiMove, chooseAiRevive } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import { Board, DeadTray, typeLabel } from './board.tsx';
 import NumberJanggiOnline from './NumberJanggiOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -42,9 +43,16 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
     setPhase('placement');
   }
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
     const aiPlacement = randomPlacement(AI, 100);
-    setState(createGame(myPlacement, aiPlacement, Math.random() < 0.5 ? HUMAN : AI));
+    setState(createGame(myPlacement, aiPlacement, first));
     setSelected(null);
     recorded.current = false;
     setPhase('playing');
@@ -157,6 +165,19 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
           onCancel={() => setOnline(null)}
         />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 

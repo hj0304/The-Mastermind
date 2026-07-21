@@ -3,6 +3,7 @@ import type { JState, Move, PieceType, PlayerId } from './engine.ts';
 import { COLS, ROWS, applyMove, createGame, idx, legalMoves } from './engine.ts';
 import { chooseAiMove } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import CoinToss from '../shared/CoinToss.tsx';
 import JungleJanggiOnline from './JungleJanggiOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -38,9 +39,16 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
   const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
 
+  /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
+  const [toss, setToss] = useState<PlayerId | null>(null);
+
   function startGame() {
+    setToss(Math.random() < 0.5 ? HUMAN : AI);
+  }
+
+  function begin(first: PlayerId) {
     // 선공 랜덤 (원류인 동물장기는 후공 필승이 알려져 있어, 선공 배정은 곧 난이도 요소)
-    setState(createGame(Math.random() < 0.5 ? HUMAN : AI));
+    setState(createGame(first));
     setSelection(null);
     setAiInfo(null);
     recorded.current = false;
@@ -127,6 +135,19 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
           onCancel={() => setOnline(null)}
         />
       </div>
+    );
+  }
+
+  if (toss !== null) {
+    return (
+      <CoinToss
+        first={toss}
+        labels={['나', 'AI']}
+        onDone={() => {
+          begin(toss);
+          setToss(null);
+        }}
+      />
     );
   }
 
