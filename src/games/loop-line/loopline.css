@@ -58,6 +58,9 @@
 .ll-board {
   position: relative;
   display: grid;
+  /* 행/열을 명시하고 minmax(0,1fr)로 고정한다 — 기본 auto/1fr는 칸 내용물의
+     min-content보다 작아지지 않아, 철로가 든 칸만 넓어지는 문제가 생긴다 */
+  grid-template-rows: repeat(9, minmax(0, 1fr));
   width: min(96vw, 590px);
   aspect-ratio: 13 / 9;
   background: #0d1117;
@@ -67,6 +70,9 @@
 }
 .ll-cell {
   position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: transparent;
   padding: 0;
