@@ -30,7 +30,7 @@
   width: 108px;
   height: 108px;
   transform-style: preserve-3d;
-  animation-duration: 1.5s;
+  animation-duration: var(--fly, 1.5s);
   animation-timing-function: cubic-bezier(0.25, 0.5, 0.3, 1);
   animation-fill-mode: forwards;
 }

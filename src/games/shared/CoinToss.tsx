@@ -43,11 +43,15 @@ export default function CoinToss({
   /** 던지는 세기 — 결과에는 영향이 없고 회전 수만 달라진다 */
   const power = usePower(mode === 'call' && called !== null && face === null);
 
+  /** 체공 시간 — 세게 던질수록 오래 돈다 (결과와 무관) */
+  const flyMs = mode === 'call' ? 900 + Math.round(power * 14) : 1500;
+
   // 던져진 뒤: 착지 → 결과 표시 → 종료
   useEffect(() => {
     if (face === null) return;
-    const t = setTimeout(() => setLanded(true), 1500);
+    const t = setTimeout(() => setLanded(true), flyMs);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [face]);
 
   useEffect(() => {
@@ -107,7 +111,7 @@ export default function CoinToss({
   }
 
   // ---- 던지는 중 / 결과 ----
-  const spin = 1 + Math.round((power / 100) * 2); // 세게 던질수록 더 돈다(결과와 무관)
+  const spin = 1 + Math.round((power / 100) * 3); // 세게 던질수록 더 돈다(결과와 무관)
   return (
     <div className="coin-overlay" onClick={finish}>
       <p className="coin-title">
@@ -115,7 +119,7 @@ export default function CoinToss({
       </p>
       <div
         className={`coin ${face === 0 ? 'to-heads' : 'to-tails'}`}
-        style={{ ['--spin' as string]: spin }}
+        style={{ ['--spin' as string]: spin, ['--fly' as string]: `${flyMs}ms` }}
       >
         <span className="coin-face front">{mode === 'call' ? '앞' : labels[0]}</span>
         <span className="coin-face back">{mode === 'call' ? '뒤' : labels[1]}</span>
