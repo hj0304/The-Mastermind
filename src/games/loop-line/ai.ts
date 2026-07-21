@@ -539,10 +539,27 @@ export function chooseAiAction(s: LLState, me: PlayerId): LLAiAction {
   const board = s.board;
 
   // ----- 불가능 선언 후 완성 시도 -----
+  // 이 국면에는 1~3개·일렬 제약이 없으므로 증인 사이클이 요구하는 칸을 한 번에 깐다
   if (s.phase === 'attempt') {
     if (s.attempter !== me) throw new Error('not attempter');
     const witness = findCompletion(board, s.tilesLeft);
     if (!witness) return { kind: 'giveup' };
+    const all: Tile[] = [];
+    for (let i = 0; i < witness.length; i++) {
+      const cur = witness[i];
+      if (board[cur] !== 0) continue;
+      const prev = witness[(i - 1 + witness.length) % witness.length];
+      const nxt = witness[(i + 1) % witness.length];
+      let mask = 0;
+      for (const b of [N, E, S, WST]) {
+        const t = step(cur, b);
+        if (t === prev || t === nxt) mask |= b;
+      }
+      all.push({ cell: cur, mask });
+    }
+    if (all.length > 0 && isValidPlacement(board, all, s.tilesLeft, true)) {
+      return { kind: 'place', tiles: all };
+    }
     const tiles = tilesFromWitness(board, witness, s.tilesLeft);
     return tiles ? { kind: 'place', tiles } : { kind: 'giveup' };
   }

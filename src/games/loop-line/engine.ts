@@ -200,9 +200,52 @@ export function isValidCells(board: Board, cells: number[], tilesLeft: number): 
   return cells.some((cell) => neighbors4(cell).some((n) => board[n] !== 0));
 }
 
+/**
+ * 불가능 선언 뒤 혼자 완성할 때의 위치 조건.
+ *
+ * 1~3개·일렬 제약은 "번갈아 놓는" 진행 규칙에 붙은 것이고, 원작에서 시도자는
+ * "남은 타일을 이용해 철로를 완성"하기만 하면 된다. 어차피 시도자는 여러 번
+ * 나눠 놓을 수 있어 만들 수 있는 최종 배치가 같으므로(최종 고리를 기존 구조에서
+ * 한 칸씩 붙여 나가면 모든 중간 단계가 합법) 승패에는 영향이 없고, 조작만 편해진다.
+ *
+ * 대신 **떠 있는 섬은 안 된다** — 각 타일은 기존 타일이나 같은 배치의 다른 타일과
+ * 이어져 있어야 한다.
+ */
+export function isValidFreeform(board: Board, cells: number[], tilesLeft: number): boolean {
+  if (cells.length < 1 || cells.length > tilesLeft) return false;
+  const uniq = new Set(cells);
+  if (uniq.size !== cells.length) return false;
+  for (const cell of cells) {
+    if (cell < 0 || cell >= W * H || board[cell] !== 0) return false;
+  }
+  // 기존 타일에서 출발해 인접한 것부터 흡수 — 전부 흡수되면 하나로 이어진 배치다
+  const rest = new Set(cells);
+  const grown = new Set<number>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const c of [...rest]) {
+      if (neighbors4(c).some((n) => board[n] !== 0 || grown.has(n))) {
+        rest.delete(c);
+        grown.add(c);
+        changed = true;
+      }
+    }
+  }
+  return rest.size === 0;
+}
+
 /** 타일 묶음 배치의 유효성 (위치 + 방향 모두) */
-export function isValidPlacement(board: Board, tiles: Tile[], tilesLeft: number): boolean {
-  if (!isValidCells(board, tiles.map((t) => t.cell), tilesLeft)) return false;
+export function isValidPlacement(
+  board: Board,
+  tiles: Tile[],
+  tilesLeft: number,
+  freeform = false,
+): boolean {
+  const cells = tiles.map((t) => t.cell);
+  if (!(freeform ? isValidFreeform(board, cells, tilesLeft) : isValidCells(board, cells, tilesLeft))) {
+    return false;
+  }
   const tmp = board.slice();
   for (const t of tiles) {
     if (!ALL_MASKS.includes(t.mask)) return false;
@@ -261,7 +304,10 @@ export function createGame(first: PlayerId): LLState {
 /** 타일 배치 (play/attempt 공용) */
 export function applyPlace(s: LLState, tiles: Tile[]): LLState {
   if (s.phase !== 'play' && s.phase !== 'attempt') throw new Error('bad phase');
-  if (!isValidPlacement(s.board, tiles, s.tilesLeft)) throw new Error('invalid placement');
+  // 혼자 완성하는 국면에서는 1~3개·일렬 제약이 없다 (isValidFreeform 주석 참조)
+  if (!isValidPlacement(s.board, tiles, s.tilesLeft, s.phase === 'attempt')) {
+    throw new Error('invalid placement');
+  }
   const board = s.board.slice();
   for (const t of tiles) board[t.cell] = t.mask;
   const tilesLeft = s.tilesLeft - tiles.length;
