@@ -201,7 +201,7 @@ export function RailBoard({
 
   return (
     <div className="ll-board-wrap">
-      <div className="ll-board" style={{ gridTemplateColumns: `repeat(${W}, 1fr)` }}>
+      <div className="ll-board" style={{ gridTemplateColumns: `repeat(${W}, minmax(0, 1fr))` }}>
         {Array.from({ length: W * H }, (_, cell) => {
           const isStation = STATIONS.includes(cell as never);
           const placedMask = board[cell];
