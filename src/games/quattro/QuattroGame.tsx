@@ -16,6 +16,7 @@ import {
 import { aiChooseAction, aiChooseOpen, aiWantsMulligan } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { CardBack, CardView, COLOR_NAME } from './cards.tsx';
 import QuattroOnline from './QuattroOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -353,6 +354,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">콰트로</span>
+      <RuleBookButton gameId="quattro" gameName="콰트로" className="rb-btn header-rb" />
     </header>
   );
 }

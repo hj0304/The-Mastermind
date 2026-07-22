@@ -16,6 +16,7 @@ import DarkMazeGame from './games/dark-maze/DarkMazeGame.tsx';
 import LoopLineGame from './games/loop-line/LoopLineGame.tsx';
 import HiddenFormulaGame from './games/hidden-formula/HiddenFormulaGame.tsx';
 import { getRecord } from './stats.ts';
+import { RuleBookButton } from './games/shared/RuleBook.tsx';
 import './App.css';
 
 const STATUS_LABEL: Record<GameMeta['status'], string> = {
@@ -27,10 +28,17 @@ const STATUS_LABEL: Record<GameMeta['status'], string> = {
 function GameCard({ game, onPlay }: { game: GameMeta; onPlay: (id: string) => void }) {
   const locked = game.status === 'planned';
   return (
-    <button
+    <div
       className={`game-card ${locked ? 'locked' : ''}`}
-      disabled={locked}
-      onClick={() => onPlay(game.id)}
+      role="button"
+      tabIndex={locked ? -1 : 0}
+      onClick={() => !locked && onPlay(game.id)}
+      onKeyDown={(e) => {
+        if (!locked && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onPlay(game.id);
+        }
+      }}
     >
       <div className="game-card-head">
         <h3>{game.name}</h3>
@@ -47,8 +55,11 @@ function GameCard({ game, onPlay }: { game: GameMeta; onPlay: (id: string) => vo
             <span className="mode record">{r.wins}승 {r.losses}패</span>
           ) : null;
         })()}
+        {game.status !== 'planned' && (
+          <RuleBookButton gameId={game.id} gameName={game.name} className="mode rb-card-btn" />
+        )}
       </div>
-    </button>
+    </div>
   );
 }
 
