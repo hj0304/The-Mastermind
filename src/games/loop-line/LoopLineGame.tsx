@@ -14,6 +14,7 @@ import {
 import { chooseAiAction, recordGameEnd } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import LoopLineOnline from './LoopLineOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -332,6 +333,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">순환선</span>
+      <RuleBookButton gameId="loop-line" gameName="순환선" className="rb-btn header-rb" />
     </header>
   );
 }

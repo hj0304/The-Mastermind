@@ -1,0 +1,125 @@
+/* 게임 설명서 모달 — RuleBook.tsx */
+
+.rb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6, 9, 14, 0.72);
+  backdrop-filter: blur(4px);
+  animation: rb-fade 0.2s ease;
+}
+@keyframes rb-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rb-panel {
+  width: min(640px, 100%);
+  max-height: min(84vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: #141a26;
+  border: 1px solid rgba(140, 160, 190, 0.22);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  animation: rb-rise 0.24s cubic-bezier(0.2, 0.9, 0.3, 1);
+  overflow: hidden;
+}
+@keyframes rb-rise {
+  from { transform: translateY(16px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.rb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(140, 160, 190, 0.16);
+  background: linear-gradient(180deg, rgba(255, 209, 102, 0.06), transparent);
+}
+.rb-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #f0f4fb;
+}
+.rb-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(140, 160, 190, 0.12);
+  color: #c8d3e6;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.rb-close:hover { background: rgba(140, 160, 190, 0.24); }
+
+.rb-body {
+  padding: 18px 22px 24px;
+  overflow-y: auto;
+}
+
+.rb-origin {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: #7f8ca6;
+}
+.rb-intro {
+  margin: 0 0 20px;
+  font-size: 0.96rem;
+  line-height: 1.65;
+  color: #d5deec;
+}
+
+.rb-section { margin-bottom: 18px; }
+.rb-section:last-child { margin-bottom: 0; }
+.rb-section h3 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: #ffd166;
+  letter-spacing: 0.03em;
+}
+.rb-section p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: #c3cdde;
+}
+.rb-list {
+  margin: 0;
+  padding-left: 1.3em;
+}
+.rb-list li {
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #c3cdde;
+}
+.rb-list li::marker { color: #7f8ca6; }
+
+.rb-empty {
+  padding: 20px 0;
+  text-align: center;
+  color: #7f8ca6;
+}
+
+/* 여는 버튼 기본형 — 각 화면에서 className으로 덮어쓸 수 있다 */
+.rb-btn {
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  border-radius: 999px;
+  border: 1px solid rgba(140, 160, 190, 0.35);
+  background: rgba(140, 160, 190, 0.1);
+  color: #c8d3e6;
+  cursor: pointer;
+}
+.rb-btn:hover { background: rgba(140, 160, 190, 0.2); }
+
+/* 게임 화면 헤더의 설명서 버튼 — 오른쪽 끝으로 */
+.header-rb { margin-left: auto; }

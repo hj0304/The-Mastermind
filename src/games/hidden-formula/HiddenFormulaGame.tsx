@@ -25,6 +25,7 @@ import {
 } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { AnswerClock, HintList, ProblemBar } from './parts.tsx';
 import HiddenFormulaOnline from './HiddenFormulaOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -458,6 +459,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">히든 포뮬러</span>
+      <RuleBookButton gameId="hidden-formula" gameName="히든 포뮬러" className="rb-btn header-rb" />
     </header>
   );
 }
