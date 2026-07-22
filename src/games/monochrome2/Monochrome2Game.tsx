@@ -4,6 +4,7 @@ import { bidColor, createGame, currentPlayer, play } from './engine.ts';
 import { chooseAiBid, recordContestForLearning, recordGameEnd } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { Gauge } from './gauge.tsx';
 import Monochrome2Online from './Monochrome2Online.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -254,6 +255,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">모노크롬 II</span>
+      <RuleBookButton gameId="monochrome-2" gameName="모노크롬 II" className="rb-btn header-rb" />
     </header>
   );
 }

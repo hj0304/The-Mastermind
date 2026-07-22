@@ -14,6 +14,7 @@ import {
 import { chooseAiMove, chooseAiRevive } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { Board, DeadTray, typeLabel } from './board.tsx';
 import NumberJanggiOnline from './NumberJanggiOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -358,6 +359,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
         ← 로비
       </button>
       <span className="game-title">수(數)의 진</span>
+      <RuleBookButton gameId="number-janggi" gameName="수(數)의 진" className="rb-btn header-rb" />
     </header>
   );
 }

@@ -4,6 +4,7 @@ import { COLS, ROWS, applyMove, createGame, idx, legalMoves } from './engine.ts'
 import { chooseAiMove } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import JungleJanggiOnline from './JungleJanggiOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -318,6 +319,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
         ← 로비
       </button>
       <span className="game-title">밀림장기</span>
+      <RuleBookButton gameId="jungle-janggi" gameName="밀림장기" className="rb-btn header-rb" />
     </header>
   );
 }

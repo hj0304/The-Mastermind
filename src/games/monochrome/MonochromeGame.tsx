@@ -4,6 +4,7 @@ import { createGame, currentPlayer, isTerminal, play, tileColor, winner } from '
 import { chooseAiMove, loadTendency, recordGameEnd, recordHumanPlay } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import MonochromeOnline from './MonochromeOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -278,6 +279,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
         ← 로비
       </button>
       <span className="game-title">모노크롬</span>
+      <RuleBookButton gameId="monochrome" gameName="모노크롬" className="rb-btn header-rb" />
     </header>
   );
 }

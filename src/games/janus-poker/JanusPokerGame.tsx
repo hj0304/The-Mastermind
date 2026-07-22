@@ -15,6 +15,7 @@ import {
 } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import JanusPokerOnline from './JanusPokerOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -448,6 +449,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">야누스 포커</span>
+      <RuleBookButton gameId="janus-poker" gameName="야누스 포커" className="rb-btn header-rb" />
     </header>
   );
 }
