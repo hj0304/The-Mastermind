@@ -10,6 +10,7 @@ import {
 } from './engine.ts';
 import { aiDecide, aiSetup, recordGameEnd, recordShowdownForLearning } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { TrackRow, tileColor } from './track.tsx';
 import MonochromeRaiseOnline from './MonochromeRaiseOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -271,6 +272,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">모노크롬 레이즈</span>
+      <RuleBookButton gameId="monochrome-raise" gameName="모노크롬 레이즈" className="rb-btn header-rb" />
     </header>
   );
 }

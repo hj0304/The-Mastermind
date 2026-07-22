@@ -13,6 +13,7 @@ import {
 import { chooseAiMove, chooseAiSticks, recordGameEnd, recordPickForLearning } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import YutBoard from '../shared/YutBoard.tsx';
 import type { BoardPiece } from '../shared/YutBoard.tsx';
 import { PlayerTray } from './tray.tsx';
@@ -398,6 +399,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">윷 대전</span>
+      <RuleBookButton gameId="yut-tactics" gameName="윷 대전" className="rb-btn header-rb" />
     </header>
   );
 }

@@ -4,6 +4,7 @@ import { COLS, ROWS, applyMove, colOf, createGame, legalMoves, rowOf } from './e
 import { chooseAiMove } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { CELL, DIR_ARROW, PieceGfx, rotLabel } from './pieces.tsx';
 import ReflectOnline from './ReflectOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -298,6 +299,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">리플렉트</span>
+      <RuleBookButton gameId="reflect" gameName="리플렉트" className="rb-btn header-rb" />
     </header>
   );
 }

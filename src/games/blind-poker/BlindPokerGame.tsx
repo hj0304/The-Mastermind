@@ -12,6 +12,7 @@ import {
 import { chooseAiAction, loadOpponentModel, recordGameEnd, recordHandObservations } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import BlindPokerOnline from './BlindPokerOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -327,6 +328,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
         ← 로비
       </button>
       <span className="game-title">블라인드 포커</span>
+      <RuleBookButton gameId="blind-poker" gameName="블라인드 포커" className="rb-btn header-rb" />
     </header>
   );
 }

@@ -15,6 +15,7 @@ import {
 import { chooseAiStep, recordGameEnd, recordHumanTurn } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import { RuleBookButton } from '../shared/RuleBook.tsx';
 import DarkMazeOnline from './DarkMazeOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -374,6 +375,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">암전 미궁</span>
+      <RuleBookButton gameId="dark-maze" gameName="암전 미궁" className="rb-btn header-rb" />
     </header>
   );
 }
