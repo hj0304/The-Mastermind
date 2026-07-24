@@ -416,7 +416,9 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
 
   function onSelect(pos: number) {
     if (!myDeclaring) return;
-    const hitBranch = branchDests.find((bd) => bd.dest === pos);
+    const hitBranch =
+      branchDests.find((bd) => bd.dest === pos) ??
+      (pos === 0 ? branchDests.find((bd) => bd.dest === GOAL) : undefined);
     if (hitBranch) {
       doDeclare(pendingValue!, selected!, hitBranch.branch);
       return;
@@ -519,7 +521,7 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
       <YutBoard
         pieces={boardPieces}
         movableNodes={pendingValue === null ? new Set(froms.filter((n) => n >= 0)) : undefined}
-        targetNodes={new Set(branchDests.map((bd) => bd.dest).filter((x) => x !== GOAL))}
+        targetNodes={new Set(branchDests.map((bd) => (bd.dest === GOAL ? 0 : bd.dest)))}
         selectedNode={selected}
         lastDest={last?.dest !== GOAL ? last?.dest ?? null : null}
         markedNode={myResponding && d ? (d.from >= 0 ? d.from : null) : null}
