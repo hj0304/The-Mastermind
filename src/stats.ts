@@ -10,7 +10,11 @@ const key = (gameId: string) => `mastermind.record.${gameId}`;
 export function getRecord(gameId: string): GameRecord {
   try {
     const raw = localStorage.getItem(key(gameId));
-    if (raw) return JSON.parse(raw) as GameRecord;
+    if (raw) {
+      const r = JSON.parse(raw) as GameRecord;
+      // 손상된 저장값이 NaN으로 누적되는 것 방지
+      if (Number.isFinite(r.wins) && Number.isFinite(r.losses)) return r;
+    }
   } catch { /* 무시 */ }
   return { wins: 0, losses: 0 };
 }

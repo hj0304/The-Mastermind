@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { ComponentType } from 'react';
 import { GAMES } from './games/registry.ts';
 import type { GameMeta } from './games/registry.ts';
 import MonochromeGame from './games/monochrome/MonochromeGame.tsx';
@@ -63,50 +64,41 @@ function GameCard({ game, onPlay }: { game: GameMeta; onPlay: (id: string) => vo
   );
 }
 
-export default function App() {
-  const [activeGame, setActiveGame] = useState<string | null>(null);
+const GAME_COMPONENTS: Record<string, ComponentType<{ onExit: () => void }>> = {
+  'monochrome': MonochromeGame,
+  'blind-poker': BlindPokerGame,
+  'jungle-janggi': JungleJanggiGame,
+  'number-janggi': NumberJanggiGame,
+  'quattro': QuattroGame,
+  'monochrome-2': Monochrome2Game,
+  'monochrome-raise': MonochromeRaiseGame,
+  'reflect': ReflectGame,
+  'yut-tactics': YutTacticsGame,
+  'yut-bluff': YutBluffGame,
+  'janus-poker': JanusPokerGame,
+  'dark-maze': DarkMazeGame,
+  'loop-line': LoopLineGame,
+  'hidden-formula': HiddenFormulaGame,
+};
 
-  if (activeGame === 'monochrome') {
-    return <MonochromeGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'blind-poker') {
-    return <BlindPokerGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'jungle-janggi') {
-    return <JungleJanggiGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'number-janggi') {
-    return <NumberJanggiGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'quattro') {
-    return <QuattroGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'monochrome-2') {
-    return <Monochrome2Game onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'monochrome-raise') {
-    return <MonochromeRaiseGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'reflect') {
-    return <ReflectGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'yut-tactics') {
-    return <YutTacticsGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'yut-bluff') {
-    return <YutBluffGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'janus-poker') {
-    return <JanusPokerGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'dark-maze') {
-    return <DarkMazeGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'loop-line') {
-    return <LoopLineGame onExit={() => setActiveGame(null)} />;
-  }
-  if (activeGame === 'hidden-formula') {
-    return <HiddenFormulaGame onExit={() => setActiveGame(null)} />;
+/** URL 해시(#/game-id)에서 게임 id 추출 — 뒤로가기/새로고침/딥링크 지원 */
+function gameFromHash(): string | null {
+  const id = window.location.hash.replace(/^#\/?/, '');
+  return id in GAME_COMPONENTS ? id : null;
+}
+
+export default function App() {
+  const [activeGame, setActiveGame] = useState<string | null>(gameFromHash);
+
+  useEffect(() => {
+    const onHashChange = () => setActiveGame(gameFromHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const ActiveGame = activeGame ? GAME_COMPONENTS[activeGame] : null;
+  if (ActiveGame) {
+    return <ActiveGame onExit={() => { window.location.hash = ''; }} />;
   }
 
   return (
@@ -117,7 +109,7 @@ export default function App() {
       </header>
       <main className="game-grid">
         {GAMES.map((g) => (
-          <GameCard key={g.id} game={g} onPlay={setActiveGame} />
+          <GameCard key={g.id} game={g} onPlay={(id) => { window.location.hash = `#/${id}`; }} />
         ))}
       </main>
       <footer className="lobby-footer">
