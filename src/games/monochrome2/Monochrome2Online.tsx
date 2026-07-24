@@ -1,22 +1,64 @@
 import { useEffect, useRef, useState } from 'react';
 import type { M2State, PlayerId } from './engine.ts';
-import { bidColor, createGame, currentPlayer, play } from './engine.ts';
+import { bidColor, createGame, play } from './engine.ts';
 import { viewFor } from './view.ts';
 import type { NetRoom } from '../../net/room.ts';
+import { makeCommitment, verifyCommitment } from '../../net/commit.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { Gauge } from './gauge.tsx';
 import './monochrome2.css';
 import '../../net/online.css';
 
 /**
- * 모노크롬 II 온라인 대전 — 호스트 권위 방식.
- * 상대의 정확한 포인트·제시액은 뷰에서 마스킹된다(게이지 단계와 색만 유지).
+ * 모노크롬 II 온라인 대전 — 호스트 권위 + 커밋-리빌 입찰.
+ *
+ * 이 게임의 은닉 정보는 제시액이다. 선(先)의 제시는 색(흑/백 = 자릿수)만 공개되고
+ * 값은 라운드가 끝나도 비공개인데, 호스트 권위 방식에서 제시 값을 평문으로 보내면
+ * 호스트가 개발자 도구로 상대 제시를 엿본 뒤 자기 제시를 정할 수 있다.
+ *
+ * 그래서 매 라운드 입찰을 커밋-리빌(net/commit.ts)로 진행한다:
+ *   1) 선이 제시값을 해시로 커밋하고 **색만** 공개한다 (원작 규칙 그대로)
+ *   2) 후는 색을 보고 자기 제시를 해시로 커밋한다
+ *   3) 양쪽 커밋이 모이면 서로 값+salt를 공개하고 해시를 검증한다
+ *   4) 호스트가 검증된 두 값을 엔진에 순서대로 적용해 라운드를 정산한다
+ * 어느 쪽도 상대 값을 본 뒤 자기 값을 바꿀 수 없다.
  */
 
 type NetMsg =
-  /** 선공 동전 결과 (호스트가 정해 알린다) */
-  | { t: 'toss'; first: PlayerId }
-  | { t: 'ready' } | { t: 'view'; v: M2State } | { t: 'act'; bid: number };
+  /** 선공 동전 결과 + 판 번호 (호스트가 정해 알린다) */
+  | { t: 'toss'; first: PlayerId; g: number }
+  | { t: 'ready' }
+  | { t: 'view'; v: M2State }
+  /** 입찰 커밋 — 선(L)은 색을 함께 공개, 후(F)는 해시만 */
+  | { t: 'bcommit'; k: string; role: 'L' | 'F'; hash: string; color: 'black' | 'white' | null }
+  /** 입찰 리빌 — 양쪽 커밋이 모인 뒤에만 보낸다 */
+  | { t: 'breveal'; k: string; value: number; salt: string };
+
+/** 라운드별 커밋-리빌 진행 상태. k = `판번호#라운드`로 판을 넘긴 지연 메시지를 차단 */
+interface Duel {
+  k: string;
+  myValue: number | null;
+  mySalt: string | null;
+  myHash: string | null;
+  myRevealed: boolean;
+  oppHash: string | null;
+  oppColor: 'black' | 'white' | null;
+  oppValue: number | null;
+  /** 커밋보다 먼저 도착한 리빌 보관 (전송 순서 뒤집힘 대비) */
+  pendingReveal: { value: number; salt: string } | null;
+}
+
+const emptyDuel = (k: string): Duel => ({
+  k,
+  myValue: null,
+  mySalt: null,
+  myHash: null,
+  myRevealed: false,
+  oppHash: null,
+  oppColor: null,
+  oppValue: null,
+  pendingReveal: null,
+});
 
 export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onExit: () => void }) {
   const me: PlayerId = room.isHost ? 0 : 1;
@@ -26,11 +68,19 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
   const [bidInput, setBidInput] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
+  /** 상대 리빌이 커밋 해시와 불일치 — 조작된 클라이언트 */
+  const [cheat, setCheat] = useState(false);
   /** 선공 동전 - 양쪽이 같은 결과를 본다 */
   const [toss, setToss] = useState<PlayerId | null>(null);
   /** 마지막 동전 결과 — 게스트가 늦게 들어오면 다시 보낸다 */
   const lastToss = useRef<PlayerId | null>(null);
   const prevHist = useRef(0);
+  /** 현재 판 번호 (재대결마다 증가) — 라운드 키에 사용 */
+  const gameNo = useRef(1);
+  const duel = useRef<Duel>(emptyDuel(''));
+  /** duel(ref) 변경을 화면에 반영하기 위한 트리거 */
+  const [, setDuelTick] = useState(0);
+  const bump = () => setDuelTick((x) => x + 1);
 
   function hostApply(next: M2State) {
     stateRef.current = next;
@@ -38,45 +88,93 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
     room.send({ t: 'view', v: viewFor(next, 1) } satisfies NetMsg);
   }
 
-  function hostAct(s: M2State, actor: PlayerId, bid: number): M2State | null {
-    if (s.result || currentPlayer(s) !== actor) return null;
-    if (!Number.isInteger(bid) || bid < 0 || bid > s.points[actor]) return null;
-    try {
-      return play(s, bid);
-    } catch {
-      return null;
-    }
-  }
-
   /** (호스트) 선공을 뽑아 양쪽에 동전을 띄운다 */
   function tossFirst(): PlayerId {
     const first: PlayerId = Math.random() < 0.5 ? 0 : 1;
     lastToss.current = first;
-    room.send({ t: 'toss', first } satisfies NetMsg);
+    room.send({ t: 'toss', first, g: gameNo.current } satisfies NetMsg);
     setToss(first);
     return first;
+  }
+
+  /** 양쪽 커밋이 모였으면 내 값을 공개한다 */
+  function maybeReveal() {
+    const d = duel.current;
+    if (d.myHash && d.oppHash && !d.myRevealed && d.myValue !== null && d.mySalt) {
+      d.myRevealed = true;
+      room.send({ t: 'breveal', k: d.k, value: d.myValue, salt: d.mySalt } satisfies NetMsg);
+    }
+  }
+
+  /** (호스트) 검증된 양쪽 값을 선→후 순서로 엔진에 적용 */
+  function hostTryResolve() {
+    if (!room.isHost) return;
+    const d = duel.current;
+    const s = stateRef.current;
+    if (!s || s.result || d.myValue === null || d.oppValue === null) return;
+    const leaderVal = s.leader === 0 ? d.myValue : d.oppValue;
+    const followerVal = s.leader === 0 ? d.oppValue : d.myValue;
+    try {
+      hostApply(play(play(s, leaderVal), followerVal));
+    } catch {
+      // 해시는 맞지만 엔진 검증 실패(보유 포인트 초과 등) — 조작된 값
+      setCheat(true);
+    }
+  }
+
+  async function onOppReveal(value: number, salt: string) {
+    const d = duel.current;
+    if (d.oppValue !== null || !d.oppHash) return;
+    if (!(await verifyCommitment(d.oppHash, value, salt))) {
+      setCheat(true);
+      return;
+    }
+    d.oppValue = value;
+    hostTryResolve();
+    bump();
   }
 
   useEffect(() => {
     const offMsg = room.onMsg((raw) => {
       const msg = raw as NetMsg;
       if (msg.t === 'toss') {
+        gameNo.current = msg.g;
         setToss(msg.first);
+        bump();
         return;
       }
       // 호스트가 게스트 입장 전에 보낸 동전은 버려지므로 다시 알린다
       if (room.isHost && msg.t === 'ready' && lastToss.current !== null) {
-        room.send({ t: 'toss', first: lastToss.current } satisfies NetMsg);
+        room.send({ t: 'toss', first: lastToss.current, g: gameNo.current } satisfies NetMsg);
       }
-      if (room.isHost) {
-        const s = stateRef.current;
-        if (!s) return;
-        if (msg.t === 'ready') room.send({ t: 'view', v: viewFor(s, 1) } satisfies NetMsg);
-        if (msg.t === 'act') {
-          const next = hostAct(s, 1, msg.bid);
-          if (next) hostApply(next);
+      if (room.isHost && msg.t === 'ready' && stateRef.current) {
+        room.send({ t: 'view', v: viewFor(stateRef.current, 1) } satisfies NetMsg);
+      }
+      if (msg.t === 'bcommit') {
+        const d = duel.current;
+        if (msg.k !== d.k || d.oppHash !== null) return;
+        d.oppHash = msg.hash;
+        d.oppColor = msg.color;
+        if (d.pendingReveal) {
+          const { value, salt } = d.pendingReveal;
+          d.pendingReveal = null;
+          void onOppReveal(value, salt);
         }
-      } else if (msg.t === 'view') {
+        maybeReveal();
+        bump();
+        return;
+      }
+      if (msg.t === 'breveal') {
+        const d = duel.current;
+        if (msg.k !== d.k) return;
+        if (!d.oppHash) {
+          d.pendingReveal = { value: msg.value, salt: msg.salt };
+          return;
+        }
+        void onOppReveal(msg.value, msg.salt);
+        return;
+      }
+      if (!room.isHost && msg.t === 'view') {
         setView(msg.v);
       }
     });
@@ -91,6 +189,16 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 라운드가 바뀌면 커밋-리빌 상태를 새로 시작
+  useEffect(() => {
+    if (!view) return;
+    const k = `${gameNo.current}#${view.history.length}`;
+    if (duel.current.k !== k) {
+      duel.current = emptyDuel(k);
+      bump();
+    }
+  });
 
   // 라운드 결과 플래시
   useEffect(() => {
@@ -110,18 +218,27 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
     onExit();
   }
 
-  function submitBid() {
-    if (!view) return;
+  async function submitBid() {
+    if (!view || view.result) return;
+    const d = duel.current;
+    if (d.myHash !== null) return; // 이미 제출
+    const iAmLeader = view.leader === me;
+    if (!iAmLeader && d.oppHash === null) return; // 후공은 선의 커밋(색 공개)을 기다린다
     const bid = Math.max(0, Math.min(bidInput, view.points[me]));
-    if (room.isHost) {
-      const s = stateRef.current;
-      if (!s) return;
-      const next = hostAct(s, 0, bid);
-      if (next) hostApply(next);
-    } else {
-      room.send({ t: 'act', bid } satisfies NetMsg);
-    }
+    const c = await makeCommitment(bid);
+    d.myValue = bid;
+    d.mySalt = c.salt;
+    d.myHash = c.hash;
+    room.send({
+      t: 'bcommit',
+      k: d.k,
+      role: iAmLeader ? 'L' : 'F',
+      hash: c.hash,
+      color: iAmLeader ? bidColor(bid) : null,
+    } satisfies NetMsg);
+    maybeReveal();
     setBidInput(0);
+    bump();
   }
 
   if (toss !== null) {
@@ -147,9 +264,10 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
   }
 
   const state = view;
-  const myTurn = !state.result && currentPlayer(state) === me;
+  const d = duel.current;
   const iAmLeader = state.leader === me;
-  const oppPending = state.pending !== null && currentPlayer(state) === me;
+  /** 내가 지금 제시할 수 있는가 — 선은 즉시, 후는 선의 커밋을 받은 뒤 */
+  const myTurn = !state.result && d.myHash === null && (iAmLeader || d.oppHash !== null);
   const roundNo = Math.min(state.roundInSet + 1, state.maxRounds);
 
   return (
@@ -176,17 +294,19 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
       </div>
 
       <div className="m2-table">
-        {oppPending ? (
-          <div className={`m2-bid-card ${bidColor(state.pending!)}`}>
+        {!state.result && !iAmLeader && d.oppColor !== null && d.myHash === null ? (
+          <div className={`m2-bid-card ${d.oppColor}`}>
             <span className="q">?</span>
             <span className="color-name">
-              {bidColor(state.pending!) === 'black' ? '흑 (한 자릿수)' : '백 (두 자릿수)'}
+              {d.oppColor === 'black' ? '흑 (한 자릿수)' : '백 (두 자릿수)'}
             </span>
           </div>
-        ) : state.pending !== null ? (
-          <div className={`m2-bid-card ${bidColor(state.pending)}`}>
-            <span>{state.pending}</span>
-            <span className="color-name">내 제시 — 상대 응수 대기</span>
+        ) : !state.result && d.myHash !== null && d.myValue !== null ? (
+          <div className={`m2-bid-card ${bidColor(d.myValue)}`}>
+            <span>{d.myValue}</span>
+            <span className="color-name">
+              내 제시 — {d.oppHash === null ? '상대 응수 대기' : '정산 중…'}
+            </span>
           </div>
         ) : (
           <div className="table-hint">
@@ -214,7 +334,7 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
               onChange={(e) => setBidInput(+e.target.value)}
             />
             <span className={`bid-preview ${bidInput <= 9 ? 'black' : 'white'}`}>{bidInput}</span>
-            <button className="primary-btn" onClick={submitBid}>제시</button>
+            <button className="primary-btn" onClick={() => void submitBid()}>제시</button>
           </div>
           <p className="bid-note">
             {bidInput <= 9 ? '흑으로 표시됩니다 (0~9)' : '백으로 표시됩니다 (10~99)'}
@@ -246,7 +366,14 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
             <p>{state.scores[me]} : {state.scores[opp]}</p>
             <div className="end-actions">
               {room.isHost ? (
-                <button className="primary-btn" onClick={() => { prevHist.current = 0; hostApply(createGame(tossFirst())); }}>
+                <button
+                  className="primary-btn"
+                  onClick={() => {
+                    prevHist.current = 0;
+                    gameNo.current += 1;
+                    hostApply(createGame(tossFirst()));
+                  }}
+                >
                   다시 대전
                 </button>
               ) : (
@@ -258,7 +385,16 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
         </div>
       )}
 
-      {oppLeft && !state.result && (
+      {cheat && (
+        <div className="online-notice-overlay">
+          <div className="online-notice">
+            <p>상대 제시의 검증에 실패했습니다 — 조작된 클라이언트일 수 있습니다</p>
+            <button className="primary-btn" onClick={exit}>로비로</button>
+          </div>
+        </div>
+      )}
+
+      {oppLeft && !state.result && !cheat && (
         <div className="online-notice-overlay">
           <div className="online-notice">
             <p>상대의 연결이 끊어졌습니다</p>

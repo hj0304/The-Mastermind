@@ -25,15 +25,14 @@ function toHex(bytes: Uint8Array): string {
   return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function digest(value: number, salt: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-256', enc.encode(`${value}:${salt}`));
+async function digest(payload: string, salt: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(`${payload}:${salt}`));
   return toHex(new Uint8Array(buf));
 }
 
 /** 선택값을 감춘 커밋 생성 */
 export async function makeCommitment(value: number): Promise<Commitment> {
-  const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
-  return { hash: await digest(value, salt), salt };
+  return makeDataCommitment(String(value));
 }
 
 /** 공개된 값이 앞서 받은 커밋과 일치하는지 검증 */
@@ -42,8 +41,23 @@ export async function verifyCommitment(
   value: number,
   salt: string,
 ): Promise<boolean> {
+  return verifyDataCommitment(hash, String(value), salt);
+}
+
+/** 임의 문자열 페이로드(직렬화한 객체 등)의 커밋 생성 */
+export async function makeDataCommitment(payload: string): Promise<Commitment> {
+  const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  return { hash: await digest(payload, salt), salt };
+}
+
+/** 공개된 페이로드가 앞서 받은 커밋과 일치하는지 검증 */
+export async function verifyDataCommitment(
+  hash: string,
+  payload: string,
+  salt: string,
+): Promise<boolean> {
   try {
-    return (await digest(value, salt)) === hash;
+    return (await digest(payload, salt)) === hash;
   } catch {
     return false;
   }
