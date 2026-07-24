@@ -60,15 +60,15 @@ export default function OnlinePanel({
     const c = makeRoomCode();
     setCode(c);
     setMode('hosting');
-    watchPeers(openRoom(c, true));
+    watchPeers(openRoom(c, true, gameName));
   }
 
   function join() {
     const c = normalizeCode(joinInput);
-    if (c.length < 4) return;
+    if (c.length < 6) return;
     setCode(c);
     setMode('joining');
-    watchPeers(openRoom(c, false));
+    watchPeers(openRoom(c, false, gameName));
   }
 
   async function copyCode() {
@@ -95,7 +95,7 @@ export default function OnlinePanel({
               placeholder="방 코드 입력"
               maxLength={6}
             />
-            <button className="ghost-btn" onClick={join} disabled={normalizeCode(joinInput).length < 4}>
+            <button className="ghost-btn" onClick={join} disabled={normalizeCode(joinInput).length < 6}>
               참가
             </button>
           </div>
