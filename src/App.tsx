@@ -106,6 +106,12 @@ export default function App() {
       <header className="lobby-header">
         <h1>The Mastermind</h1>
         <p>클래식 두뇌게임의 AI 재해석 — 당신을 학습하는 상대와 싸워라</p>
+        <div className="lobby-stats">
+          <span>🎮 14개 게임</span>
+          <span>🧠 단일 난이도 — EXTREME AI</span>
+          <span>⚔️ 온라인 멀티플레이</span>
+          <span>📱 설치 없이 바로 플레이</span>
+        </div>
       </header>
       <main className="game-grid">
         {GAMES.map((g) => (
