@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { M2State, PlayerId } from './engine.ts';
-import { bidColor, createGame, play } from './engine.ts';
+import { bidColor, createGame, gaugeTier, play } from './engine.ts';
 import { viewFor } from './view.ts';
 import type { NetRoom } from '../../net/room.ts';
 import { makeCommitment, verifyCommitment } from '../../net/commit.ts';
@@ -29,8 +29,13 @@ type NetMsg =
   | { t: 'toss'; first: PlayerId; g: number }
   | { t: 'ready' }
   | { t: 'view'; v: M2State }
-  /** 입찰 커밋 — 선(L)은 색을 함께 공개, 후(F)는 해시만 */
-  | { t: 'bcommit'; k: string; role: 'L' | 'F'; hash: string; color: 'black' | 'white' | null }
+  /**
+   * 입찰 커밋 — 선(L)은 색과 지출 후 게이지 단계를 함께 공개, 후(F)는 해시만.
+   * 게이지 단계는 원작의 공개 정보다: "포인트를 입력한 순간 표시등이 갱신되므로,
+   * 선이 낮은 포인트를 쓰면 후공이 결정하기 전에 표시등이 꺼진다."
+   * 신고된 단계는 라운드 정산 후 실제 뷰의 단계와 대조해 검증한다.
+   */
+  | { t: 'bcommit'; k: string; role: 'L' | 'F'; hash: string; color: 'black' | 'white' | null; tier: number | null }
   /** 입찰 리빌 — 양쪽 커밋이 모인 뒤에만 보낸다 */
   | { t: 'breveal'; k: string; value: number; salt: string };
 
@@ -43,6 +48,8 @@ interface Duel {
   myRevealed: boolean;
   oppHash: string | null;
   oppColor: 'black' | 'white' | null;
+  /** 선(상대)이 신고한 지출 후 게이지 단계 — 정산 후 검증 */
+  oppTier: number | null;
   oppValue: number | null;
   /** 커밋보다 먼저 도착한 리빌 보관 (전송 순서 뒤집힘 대비) */
   pendingReveal: { value: number; salt: string } | null;
@@ -56,6 +63,7 @@ const emptyDuel = (k: string): Duel => ({
   myRevealed: false,
   oppHash: null,
   oppColor: null,
+  oppTier: null,
   oppValue: null,
   pendingReveal: null,
 });
@@ -155,6 +163,7 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
         if (msg.k !== d.k || d.oppHash !== null) return;
         d.oppHash = msg.hash;
         d.oppColor = msg.color;
+        d.oppTier = msg.tier;
         if (d.pendingReveal) {
           const { value, salt } = d.pendingReveal;
           d.pendingReveal = null;
@@ -195,6 +204,16 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
     if (!view) return;
     const k = `${gameNo.current}#${view.history.length}`;
     if (duel.current.k !== k) {
+      const d = duel.current;
+      // 직전 라운드에 선(상대)이 신고했던 게이지 단계를 정산된 실제 단계와 대조
+      if (
+        d.oppTier !== null &&
+        view.history.length > 0 &&
+        d.k === `${gameNo.current}#${view.history.length - 1}` &&
+        gaugeTier(view.points[opp]) !== d.oppTier
+      ) {
+        setCheat(true);
+      }
       duel.current = emptyDuel(k);
       bump();
     }
@@ -235,6 +254,8 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
       role: iAmLeader ? 'L' : 'F',
       hash: c.hash,
       color: iAmLeader ? bidColor(bid) : null,
+      // 선의 지출 후 게이지 단계 공개 (원작: 제시 즉시 표시등 갱신)
+      tier: iAmLeader ? gaugeTier(view.points[me] - bid) : null,
     } satisfies NetMsg);
     maybeReveal();
     setBidInput(0);
@@ -290,7 +311,11 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
 
       <div className="m2-gauges">
         <Gauge label="내 포인트" points={state.points[me]} exact />
-        <Gauge label="상대 포인트" points={state.points[opp]} />
+        {/* 선(상대)이 제시한 순간 신고된 게이지 단계를 즉시 반영 — 원작 공개 정보 */}
+        <Gauge
+          label="상대 포인트"
+          points={d.oppTier !== null ? d.oppTier * 20 + 10 : state.points[opp]}
+        />
       </div>
 
       <div className="m2-table">
