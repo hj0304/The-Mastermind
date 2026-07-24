@@ -28,7 +28,12 @@ html, body, #root {
 }
 
 body {
-  background: var(--bg);
+  /* 단색 배경 위에 은은한 상단 글로우 — 첫인상용, 콘텐츠 대비에는 영향 없는 저채도 */
+  background:
+    radial-gradient(1100px 550px at 50% -120px, rgba(77, 163, 255, 0.09), transparent 70%),
+    radial-gradient(800px 450px at 85% 10%, rgba(255, 181, 71, 0.05), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
   /* 모바일에서 더블탭 확대 방지 */
   touch-action: manipulation;
 }
