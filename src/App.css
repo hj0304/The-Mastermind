@@ -64,6 +64,11 @@
   font-size: 18px;
 }
 
+.game-icon {
+  font-size: 20px;
+  margin-right: 2px;
+}
+
 .badge {
   font-size: 10px;
   font-weight: 700;

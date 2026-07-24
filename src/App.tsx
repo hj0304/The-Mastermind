@@ -42,7 +42,7 @@ function GameCard({ game, onPlay }: { game: GameMeta; onPlay: (id: string) => vo
       }}
     >
       <div className="game-card-head">
-        <h3>{game.name}</h3>
+        <h3><span className="game-icon">{game.icon}</span> {game.name}</h3>
         <span className={`badge badge-${game.status}`}>{STATUS_LABEL[game.status]}</span>
       </div>
       <p className="tagline">{game.tagline}</p>

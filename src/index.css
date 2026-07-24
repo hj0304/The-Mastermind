@@ -9,7 +9,7 @@
   --accent-2: #4da3ff;
   --danger: #ff5d5d;
 
-  font-family: 'Pretendard', 'Noto Sans KR', -apple-system, 'Segoe UI', sans-serif;
+  font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.5;
   color-scheme: dark;
   color: var(--text);
