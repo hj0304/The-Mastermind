@@ -18,7 +18,28 @@ import LoopLineGame from './games/loop-line/LoopLineGame.tsx';
 import HiddenFormulaGame from './games/hidden-formula/HiddenFormulaGame.tsx';
 import { getRecord } from './stats.ts';
 import { RuleBookButton } from './games/shared/RuleBook.tsx';
+import { THEMES, getTheme, setTheme } from './theme.ts';
 import './App.css';
+
+function ThemeSwitch() {
+  const [active, setActive] = useState(getTheme);
+  return (
+    <div className="theme-switch">
+      {THEMES.map((t) => (
+        <button
+          key={t.id}
+          className={t.id === active ? 'active' : ''}
+          onClick={() => {
+            setTheme(t.id);
+            setActive(t.id);
+          }}
+        >
+          <span>{t.icon}</span> {t.name}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const STATUS_LABEL: Record<GameMeta['status'], string> = {
   playable: 'PLAY',
@@ -112,6 +133,7 @@ export default function App() {
           <span>⚔️ 온라인 멀티플레이</span>
           <span>📱 설치 없이 바로 플레이</span>
         </div>
+        <ThemeSwitch />
       </header>
       <main className="game-grid">
         {GAMES.map((g) => (
