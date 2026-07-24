@@ -156,8 +156,10 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
 
   function onSelect(pos: number) {
     if (!humanDeclaring) return;
-    // 분기 대기 중: 도착 칸 클릭으로 경로 확정
-    const hitBranch = branchDests.find((bd) => bd.dest === pos);
+    // 분기 대기 중: 도착 칸 클릭으로 경로 확정 (완주 분기는 출발/도착점 0 클릭)
+    const hitBranch =
+      branchDests.find((bd) => bd.dest === pos) ??
+      (pos === 0 ? branchDests.find((bd) => bd.dest === GOAL) : undefined);
     if (hitBranch) {
       onBranch(hitBranch.branch);
       return;
@@ -332,7 +334,7 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
         movableNodes={
           pendingValue === null ? new Set(froms.filter((n) => n >= 0)) : undefined
         }
-        targetNodes={new Set(branchDests.map((bd) => bd.dest).filter((x) => x !== GOAL))}
+        targetNodes={new Set(branchDests.map((bd) => (bd.dest === GOAL ? 0 : bd.dest)))}
         selectedNode={selected}
         lastDest={last?.dest !== GOAL ? last?.dest ?? null : null}
         markedNode={humanResponding && d ? (d.from >= 0 ? d.from : null) : null}

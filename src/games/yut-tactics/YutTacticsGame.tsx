@@ -126,7 +126,9 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
   const stepOpts = allOpts.filter((o) => o.stepIdx === stepIdx);
   const fromNodes = new Set(stepOpts.map((o) => o.from));
   const destOpts = selectedFrom !== null ? stepOpts.filter((o) => o.from === selectedFrom) : [];
-  const targetNodes = new Set(destOpts.map((o) => o.dest).filter((d) => d !== GOAL));
+  // 완주(GOAL)는 판 밖 개념이라 출발/도착점(0)에 초록으로 표시한다 —
+  // 중앙에서 지름길로 완주하는 선택지가 판 위에서 보이지 않던 문제 방지
+  const targetNodes = new Set(destOpts.map((o) => (o.dest === GOAL ? 0 : o.dest)));
   const goalOpt = destOpts.find((o) => o.dest === GOAL);
 
   function doMove(o: MoveOption) {
@@ -148,7 +150,9 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
     if (!myMovePhase) return;
     // 도착 칸 클릭 → 이동 확정
     if (selectedFrom !== null) {
-      const hit = destOpts.find((o) => o.dest === n);
+      const hit =
+        destOpts.find((o) => o.dest === n) ??
+        (n === 0 ? destOpts.find((o) => o.dest === GOAL) : undefined);
       if (hit) {
         doMove(hit);
         return;
