@@ -1,0 +1,186 @@
+/**
+ * 테마 정의 — html[data-theme]에 따라 CSS 변수와 배경 장식을 교체한다.
+ * 기본(미드나이트)은 index.css의 :root 값. 각 테마는 변수 재정의 + 배경 레이어.
+ *
+ * 확장 토큰:
+ * --font-display : 제목·타이틀용 디스플레이 폰트
+ * --radius-card  : 카드 모서리
+ * --card-blur    : 카드 backdrop-filter (글래스 계열)
+ * --card-shadow  : 카드 그림자/광택
+ * --title-gradient : 로비 타이틀 그라데이션
+ */
+
+:root {
+  --font-display: inherit;
+  --radius-card: 14px;
+  --card-blur: none;
+  --card-shadow: none;
+  --title-gradient: linear-gradient(120deg, var(--accent), var(--accent-2));
+}
+
+/* ---------- 글래스 (Glassmorphism) ---------- */
+html[data-theme='glass'] {
+  --bg: #0a0d14;
+  --bg-card: rgba(255, 255, 255, 0.055);
+  --bg-card-hover: rgba(255, 255, 255, 0.11);
+  --border: rgba(255, 255, 255, 0.14);
+  --text: #f3f6fb;
+  --text-dim: rgba(255, 255, 255, 0.58);
+  --accent: #ffb547;
+  --accent-2: #8fc0ff;
+  --font-display: 'Space Grotesk', sans-serif;
+  --radius-card: 20px;
+  --card-blur: blur(18px) saturate(140%);
+  --card-shadow: 0 8px 26px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --title-gradient: linear-gradient(110deg, #ffffff, #8fc0ff 55%, #ffb547);
+}
+html[data-theme='glass'] body {
+  background:
+    radial-gradient(300px 300px at 8% 4%, rgba(77, 163, 255, 0.4), transparent 68%),
+    radial-gradient(280px 280px at 94% 22%, rgba(255, 181, 71, 0.28), transparent 68%),
+    radial-gradient(300px 300px at 4% 78%, rgba(151, 108, 255, 0.32), transparent 68%),
+    radial-gradient(240px 240px at 90% 92%, rgba(64, 224, 208, 0.2), transparent 70%),
+    linear-gradient(165deg, #0d1017, #0a0d14 60%, #0c1119);
+  background-attachment: fixed;
+}
+
+/* ---------- 사이버펑크 (Cyberpunk) ---------- */
+html[data-theme='cyber'] {
+  --bg: #05070f;
+  --bg-card: rgba(38, 240, 255, 0.05);
+  --bg-card-hover: rgba(38, 240, 255, 0.11);
+  --border: rgba(38, 240, 255, 0.28);
+  --text: #eafcff;
+  --text-dim: #7fd8e6;
+  --accent: #ff2e88;
+  --accent-2: #26f0ff;
+  --danger: #ff2e5f;
+  --font-display: 'Chakra Petch', monospace;
+  --radius-card: 6px;
+  --card-shadow: 0 0 18px rgba(38, 240, 255, 0.09), inset 0 0 22px rgba(38, 240, 255, 0.04);
+  --title-gradient: linear-gradient(110deg, #26f0ff, #ff2e88);
+}
+html[data-theme='cyber'] body {
+  background:
+    linear-gradient(rgba(38, 240, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(38, 240, 255, 0.045) 1px, transparent 1px),
+    radial-gradient(80% 55% at 50% 0%, rgba(255, 46, 136, 0.12), transparent 60%),
+    radial-gradient(70% 50% at 85% 100%, rgba(38, 240, 255, 0.1), transparent 60%),
+    #05070f;
+  background-size: 34px 34px, 34px 34px, 100% 100%, 100% 100%, 100% 100%;
+  background-attachment: fixed;
+}
+/* 스캔라인 오버레이 */
+html[data-theme='cyber'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0.14) 3px);
+  opacity: 0.5;
+}
+
+/* ---------- 레트로 퓨처 (Retro-Futurism) ---------- */
+html[data-theme='retro'] {
+  --bg: #070b16;
+  --bg-card: rgba(26, 44, 74, 0.55);
+  --bg-card-hover: rgba(36, 58, 94, 0.7);
+  --border: rgba(255, 158, 61, 0.24);
+  --text: #f2ebdd;
+  --text-dim: #9fb0c8;
+  --accent: #ff9e3d;
+  --accent-2: #35d0c0;
+  --font-display: 'Orbitron', sans-serif;
+  --radius-card: 16px;
+  --card-shadow: 0 10px 26px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --title-gradient: linear-gradient(110deg, #ffd9a8, #ff9e3d 50%, #35d0c0);
+}
+html[data-theme='retro'] body {
+  background:
+    radial-gradient(1.4px 1.4px at 20% 14%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 68% 9%, #cfe3ff, transparent),
+    radial-gradient(1.5px 1.5px at 84% 26%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 38% 30%, #ffd9a8, transparent),
+    radial-gradient(1.3px 1.3px at 12% 46%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 90% 60%, #cfe3ff, transparent),
+    radial-gradient(1.4px 1.4px at 55% 68%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 28% 82%, #ffd9a8, transparent),
+    radial-gradient(420px 420px at 50% -140px, rgba(255, 158, 61, 0.32), rgba(255, 90, 95, 0.1) 45%, transparent 70%),
+    radial-gradient(120% 75% at 50% 0%, #1a2c4a, #0a1222 55%, #070b16);
+  background-attachment: fixed;
+}
+
+/* ---------- 클래식 룸 (Skeuomorphism) ---------- */
+html[data-theme='skeuo'] {
+  --bg: #120c07;
+  --bg-card: rgba(32, 55, 90, 0.75);
+  --bg-card-hover: rgba(42, 68, 108, 0.85);
+  --border: rgba(212, 162, 74, 0.35);
+  --text: #e8dcc4;
+  --text-dim: #b7a98a;
+  --accent: #d4a24a;
+  --accent-2: #ffcf7a;
+  --font-display: 'Cinzel', serif;
+  --radius-card: 12px;
+  --card-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 220, 160, 0.14);
+  --title-gradient: linear-gradient(110deg, #ffcf7a, #d4a24a 60%, #8f6a2e);
+}
+html[data-theme='skeuo'] body {
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.02) 0, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 4px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.05) 0, rgba(0, 0, 0, 0.05) 1px, transparent 1px, transparent 4px),
+    radial-gradient(1100px 650px at 50% -10%, #2a2018, #120c07 72%);
+  background-attachment: fixed;
+}
+
+/* ---------- 테마 공통 적용부 ---------- */
+
+.lobby-header h1 {
+  font-family: var(--font-display);
+  background: var(--title-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.game-card {
+  border-radius: var(--radius-card);
+  backdrop-filter: var(--card-blur);
+  -webkit-backdrop-filter: var(--card-blur);
+  box-shadow: var(--card-shadow);
+}
+
+/* 테마 선택 토글 */
+.theme-switch {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.theme-switch button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.theme-switch button:hover {
+  border-color: var(--accent);
+}
+
+.theme-switch button.active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+  font-weight: 700;
+}
