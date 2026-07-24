@@ -40,6 +40,10 @@ export interface NetRoom {
   leave: () => void;
 }
 
-export function openRoom(code: string, isHost: boolean): NetRoom {
-  return openRelayRoom(code, isHost);
+/**
+ * @param scope 방 네임스페이스(게임 이름) — 다른 게임에서 같은 코드로 참가해도
+ *              서로 연결되지 않게 한다.
+ */
+export function openRoom(code: string, isHost: boolean, scope = ''): NetRoom {
+  return openRelayRoom(code, isHost, scope);
 }
