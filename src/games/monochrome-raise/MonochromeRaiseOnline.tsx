@@ -11,22 +11,32 @@ import {
 import { viewFor } from './view.ts';
 import { TrackRow, tileColor } from './track.tsx';
 import type { NetRoom } from '../../net/room.ts';
+import { makeDataCommitment, verifyDataCommitment } from '../../net/commit.ts';
 import './raise.css';
 import '../../net/online.css';
 
 /**
- * 모노크롬 레이즈 온라인 대전 — 호스트 권위 방식.
+ * 모노크롬 레이즈 온라인 대전 — 호스트 권위 + 설계 커밋-리빌.
  *
- * 배치 단계가 있어 흐름이 두 층이다: 양쪽이 각자 타일 순서와 칩 배분을 설계해
- * 호스트에게 보내고, 둘 다 준비되면 호스트가 대국을 시작한다.
- * 칩 배분은 공개 정보이고, 상대의 타일 순서만 관점 뷰에서 가려진다(view.ts).
+ * 배치 단계가 있어 흐름이 두 층이다: 양쪽이 각자 타일 순서와 칩 배분을 설계하고,
+ * 둘 다 준비되면 호스트가 대국을 시작한다.
+ *
+ * 설계(특히 타일 순서)는 은닉 정보라 평문으로 보내면 호스트가 상대 설계를 본 뒤
+ * 자기 설계를 맞출 수 있다. 그래서 커밋-리빌(net/commit.ts)로 진행한다:
+ *   1) 각자 설계를 확정하면 해시만 서로 보낸다
+ *   2) 게스트는 호스트의 커밋을 받은 뒤에야 설계를 공개한다 (호스트가 검증 후 시작)
+ *   3) 호스트의 설계는 대국 내내 비공개이므로, 게임이 끝날 때 공개한다 —
+ *      게스트가 해시를 검증해 호스트가 시작 전에 설계를 고정했음을 확인한다
  */
 
 type RAction = { k: 'decide'; action: 'call' | 'fold' } | { k: 'next' };
 
 type NetMsg =
   | { t: 'ready' }
-  | { t: 'setup'; s: RaiseSetup }
+  /** 설계 커밋 — 설계 내용 대신 해시만 */
+  | { t: 'scommit'; who: 'host' | 'guest'; hash: string }
+  /** 설계 리빌 — 게스트는 시작 전(호스트 커밋 후), 호스트는 게임 종료 시 */
+  | { t: 'sreveal'; who: 'host' | 'guest'; s: RaiseSetup; salt: string }
   | { t: 'view'; v: RaiseState }
   | { t: 'act'; a: RAction };
 
@@ -45,12 +55,20 @@ export default function MonochromeRaiseOnline({
   const [submitted, setSubmitted] = useState(false);
   const [view, setView] = useState<RaiseState | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
+  /** 상대 리빌이 커밋 해시와 불일치 — 조작된 클라이언트 */
+  const [cheat, setCheat] = useState(false);
 
   const stateRef = useRef<RaiseState | null>(null);
   const setups = useRef<{ host: RaiseSetup | null; guest: RaiseSetup | null }>({
     host: null,
     guest: null,
   });
+  /** 커밋-리빌 진행 상태 (메시지 핸들러에서 접근하므로 ref) */
+  const mySubmitted = useRef<RaiseSetup | null>(null);
+  const mySalt = useRef<string | null>(null);
+  const myHash = useRef<string | null>(null);
+  const oppHash = useRef<string | null>(null);
+  const myRevealed = useRef(false);
 
   const chipsUsed = mySetup.bets.reduce((a, b) => a + b, 0);
 
@@ -58,6 +76,20 @@ export default function MonochromeRaiseOnline({
     stateRef.current = next;
     setView(viewFor(next, 0));
     room.send({ t: 'view', v: viewFor(next, 1) } satisfies NetMsg);
+    // 게임 종료 — 호스트 설계를 공개해 시작 전에 고정돼 있었음을 증명한다
+    if (next.result && !myRevealed.current && room.isHost && mySubmitted.current && mySalt.current) {
+      myRevealed.current = true;
+      room.send({ t: 'sreveal', who: 'host', s: mySubmitted.current, salt: mySalt.current } satisfies NetMsg);
+    }
+  }
+
+  /** (게스트) 내 커밋을 보냈고 호스트 커밋도 받았으면 설계를 공개한다 */
+  function guestMaybeReveal() {
+    if (room.isHost || myRevealed.current) return;
+    if (mySubmitted.current && mySalt.current && oppHash.current) {
+      myRevealed.current = true;
+      room.send({ t: 'sreveal', who: 'guest', s: mySubmitted.current, salt: mySalt.current } satisfies NetMsg);
+    }
   }
 
   function hostTryStart() {
@@ -81,13 +113,39 @@ export default function MonochromeRaiseOnline({
   useEffect(() => {
     const offMsg = room.onMsg((raw) => {
       const msg = raw as NetMsg;
-      if (room.isHost) {
-        if (msg.t === 'ready' && stateRef.current) {
-          room.send({ t: 'view', v: viewFor(stateRef.current, 1) } satisfies NetMsg);
+      if (msg.t === 'scommit') {
+        const fromOpp = room.isHost ? msg.who === 'guest' : msg.who === 'host';
+        if (fromOpp && oppHash.current === null) {
+          oppHash.current = msg.hash;
+          guestMaybeReveal();
         }
-        if (msg.t === 'setup') {
-          setups.current.guest = msg.s;
-          hostTryStart();
+        return;
+      }
+      if (msg.t === 'sreveal') {
+        void (async () => {
+          if (!oppHash.current) return; // 커밋 없이 온 리빌 — 검증 불가
+          const ok = await verifyDataCommitment(oppHash.current, JSON.stringify(msg.s), msg.salt);
+          if (!ok) {
+            setCheat(true);
+            return;
+          }
+          if (room.isHost && msg.who === 'guest') {
+            setups.current.guest = msg.s;
+            hostTryStart();
+          }
+          // 게스트가 받는 호스트 리빌은 검증만으로 충분 (설계가 시작 전 고정이었음을 확인)
+        })();
+        return;
+      }
+      if (room.isHost) {
+        if (msg.t === 'ready') {
+          if (stateRef.current) {
+            room.send({ t: 'view', v: viewFor(stateRef.current, 1) } satisfies NetMsg);
+          }
+          // 게스트가 내 커밋을 못 받은 채 입장했을 수 있으니 다시 알린다
+          if (myHash.current) {
+            room.send({ t: 'scommit', who: 'host', hash: myHash.current } satisfies NetMsg);
+          }
         }
         if (msg.t === 'act' && stateRef.current) {
           const next = hostAct(stateRef.current, 1, msg.a);
@@ -113,14 +171,19 @@ export default function MonochromeRaiseOnline({
     onExit();
   }
 
-  function submitSetup() {
-    if (chipsUsed !== TOTAL_CHIPS) return;
+  async function submitSetup() {
+    if (chipsUsed !== TOTAL_CHIPS || mySubmitted.current) return;
     setSubmitted(true);
+    mySubmitted.current = mySetup;
+    const c = await makeDataCommitment(JSON.stringify(mySetup));
+    mySalt.current = c.salt;
+    myHash.current = c.hash;
+    room.send({ t: 'scommit', who: room.isHost ? 'host' : 'guest', hash: c.hash } satisfies NetMsg);
     if (room.isHost) {
       setups.current.host = mySetup;
       hostTryStart();
     } else {
-      room.send({ t: 'setup', s: mySetup } satisfies NetMsg);
+      guestMaybeReveal();
     }
   }
 
@@ -211,7 +274,7 @@ export default function MonochromeRaiseOnline({
               <button
                 className="primary-btn"
                 disabled={chipsUsed !== TOTAL_CHIPS}
-                onClick={submitSetup}
+                onClick={() => void submitSetup()}
               >
                 {chipsUsed === TOTAL_CHIPS ? '이 설계로 대전 시작' : `칩 ${TOTAL_CHIPS - chipsUsed}개 더 분배`}
               </button>
@@ -222,7 +285,15 @@ export default function MonochromeRaiseOnline({
             </p>
           )}
         </div>
-        {oppLeft && (
+        {cheat && (
+          <div className="online-notice-overlay">
+            <div className="online-notice">
+              <p>상대 설계의 검증에 실패했습니다 — 조작된 클라이언트일 수 있습니다</p>
+              <button className="primary-btn" onClick={exit}>로비로</button>
+            </div>
+          </div>
+        )}
+        {oppLeft && !cheat && (
           <div className="online-notice-overlay">
             <div className="online-notice">
               <p>상대의 연결이 끊어졌습니다</p>
@@ -324,7 +395,16 @@ export default function MonochromeRaiseOnline({
         </div>
       )}
 
-      {oppLeft && !state.result && (
+      {cheat && (
+        <div className="online-notice-overlay">
+          <div className="online-notice">
+            <p>상대 설계의 검증에 실패했습니다 — 조작된 클라이언트일 수 있습니다</p>
+            <button className="primary-btn" onClick={exit}>로비로</button>
+          </div>
+        </div>
+      )}
+
+      {oppLeft && !state.result && !cheat && (
         <div className="online-notice-overlay">
           <div className="online-notice">
             <p>상대의 연결이 끊어졌습니다</p>
