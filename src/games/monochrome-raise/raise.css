@@ -68,7 +68,7 @@
 .rz-tile.black { background: #14161c; color: #e8ecf4; border: 2px solid #3a4356; }
 .rz-tile.white { background: #e9edf5; color: #14161c; border: 2px solid #fff; }
 .rz-tile.back {
-  background: repeating-linear-gradient(45deg, #2a3242, #2a3242 6px, #1e2534 6px, #1e2534 12px);
+  background: var(--card-back, repeating-linear-gradient(45deg, #2a3242, #2a3242 6px, #1e2534 6px, #1e2534 12px));
   color: var(--text-dim);
   border: 1px solid var(--border);
 }
@@ -131,7 +131,7 @@
 .rz-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 16, 0.75);
+  background: var(--overlay-bg, rgba(10, 12, 16, 0.75));
   display: flex;
   align-items: center;
   justify-content: center;

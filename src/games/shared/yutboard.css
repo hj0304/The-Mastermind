@@ -4,18 +4,18 @@
   display: block;
 }
 
-.yb-board-bg { fill: #241a10; stroke: #4a3721; stroke-width: 2; }
-.yb-board-inner { fill: #2d2114; stroke: #3c2c19; stroke-width: 1; }
+.yb-board-bg { fill: var(--board-surface, #241a10); stroke: var(--board-frame, #4a3721); stroke-width: 2; }
+.yb-board-inner { fill: var(--board-cell, #2d2114); stroke: var(--board-cell-line, #3c2c19); stroke-width: 1; }
 
 .yb-path {
-  stroke: #4e3c25;
+  stroke: var(--board-cell-line, #4e3c25);
   stroke-width: 2.5;
   stroke-linecap: round;
 }
 
 .yb-station { cursor: pointer; }
 .yb-node {
-  fill: #1c1510;
+  fill: var(--board-cell-alt, #1c1510);
   stroke: #6b5333;
   stroke-width: 2;
   transition: fill 0.2s;
@@ -67,7 +67,7 @@
 .yut-throw-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 16, 0.82);
+  background: var(--overlay-bg, rgba(10, 12, 16, 0.82));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -138,7 +138,7 @@
 .d10-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 16, 0.82);
+  background: var(--overlay-bg, rgba(10, 12, 16, 0.82));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -154,8 +154,8 @@
   justify-content: center;
   font-size: 30px;
   font-weight: 900;
-  color: #14161c;
-  background: linear-gradient(145deg, #ffd98a, #e8a63d);
+  color: var(--piece-me-ink, #14161c);
+  background: var(--piece-me-bg, linear-gradient(145deg, #ffd98a, #e8a63d));
   clip-path: polygon(50% 0%, 93% 25%, 100% 60%, 75% 100%, 25% 100%, 0% 60%, 7% 25%);
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
 }

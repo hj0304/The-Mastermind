@@ -50,7 +50,7 @@
   align-items: center;
   justify-content: center;
   gap: 18px;
-  background: linear-gradient(145deg, #191925, #10101a);
+  background: var(--board-cell, linear-gradient(145deg, #191925, #10101a));
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px;
