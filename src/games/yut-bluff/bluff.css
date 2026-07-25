@@ -153,7 +153,7 @@
 .yb-banner-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 16, 0.72);
+  background: var(--overlay-bg, rgba(10, 12, 16, 0.72));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -188,7 +188,7 @@
 .yb-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 16, 0.75);
+  background: var(--overlay-bg, rgba(10, 12, 16, 0.75));
   display: flex;
   align-items: center;
   justify-content: center;

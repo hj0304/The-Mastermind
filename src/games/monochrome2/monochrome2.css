@@ -99,7 +99,7 @@
   justify-content: center;
   font-size: 26px;
   font-weight: 800;
-  background: rgba(15, 18, 24, 0.85);
+  background: var(--overlay-bg, rgba(15, 18, 24, 0.85));
   border-radius: 14px;
 }
 
@@ -174,7 +174,7 @@
 .m2-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 16, 0.75);
+  background: var(--overlay-bg, rgba(10, 12, 16, 0.75));
   display: flex;
   align-items: center;
   justify-content: center;

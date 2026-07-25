@@ -63,7 +63,7 @@
   grid-template-rows: repeat(9, minmax(0, 1fr));
   width: min(96vw, 590px);
   aspect-ratio: 13 / 9;
-  background: #0d1117;
+  background: var(--board-surface, #0d1117);
   border: 2px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
