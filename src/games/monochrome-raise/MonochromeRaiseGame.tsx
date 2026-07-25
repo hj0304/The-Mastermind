@@ -9,6 +9,7 @@ import {
   randomSetup,
 } from './engine.ts';
 import { aiDecide, aiSetup, recordGameEnd, recordShowdownForLearning } from './ai.ts';
+import { loadPolicy } from './policy.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { SurrenderButton } from '../shared/Surrender.tsx';
@@ -35,6 +36,11 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
   const learned = useRef(0);
 
   const chipsUsed = mySetup.bets.reduce((a, b) => a + b, 0);
+
+  // MCCFR 자가학습 정책(코드 분할 청크)을 화면 진입 시 미리 로드
+  useEffect(() => {
+    void loadPolicy();
+  }, []);
 
   function enterArrange() {
     setMySetup(randomSetup());
