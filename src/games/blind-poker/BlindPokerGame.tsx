@@ -10,6 +10,7 @@ import {
   seenCards,
 } from './engine.ts';
 import { chooseAiAction, loadOpponentModel, recordGameEnd, recordHandObservations } from './ai.ts';
+import { loadPolicy } from './policy.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
@@ -36,6 +37,11 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
 
   /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
   const [toss, setToss] = useState<PlayerId | null>(null);
+
+  // CFR 자가학습 정책(코드 분할 청크)을 화면 진입 시 미리 로드
+  useEffect(() => {
+    void loadPolicy();
+  }, []);
 
   function startGame() {
     setToss(0); // 값은 의미 없다 — 선공은 동전을 던져 정해진다
