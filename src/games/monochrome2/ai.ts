@@ -13,6 +13,8 @@
 
 import type { M2State, PlayerId } from './engine.ts';
 import { bidColor, currentPlayer, gaugeTier } from './engine.ts';
+import type { PolicyEntry } from './policy.ts';
+import { lookupPolicy } from './policy.ts';
 
 // ---------- 상대 잔여 포인트 구간 추적 ----------
 
@@ -178,10 +180,48 @@ function pickWeighted(cands: Array<{ bid: number; ev: number }>, temp: number): 
   return cands[0].bid;
 }
 
+/** MCCFR 정책의 추상 정보집합 키 — scripts/cfr/train-monochrome2.ts 와 동일해야 한다 */
+export function policyKey(s: M2State, me: PlayerId): string {
+  const p = s.points[me];
+  const oppHiB = Math.min(10, Math.ceil((opponentPointBounds(s, me).hi + 1) / 10));
+  const role = s.pending === null ? 0 : s.pending <= 9 ? 1 : 2;
+  const roundsLeft = s.maxRounds - s.roundInSet;
+  const ot = s.overtime > 0 ? 1 : 0;
+  const key =
+    p |
+    (oppHiB << 7) |
+    (s.scores[me] << 11) |
+    (s.scores[1 - me] << 14) |
+    (roundsLeft << 17) |
+    (role << 21) |
+    (ot << 23);
+  return key.toString(36);
+}
+
+/** 학습 정책 항목에서 입찰액을 확률 표집 (혼합 전략 유지) */
+function samplePolicyBid(entry: PolicyEntry, myPoints: number): number {
+  let r = Math.random();
+  let picked = 0;
+  for (const [bid, prob] of Object.entries(entry)) {
+    r -= prob;
+    if (r <= 0) {
+      picked = Number(bid);
+      break;
+    }
+  }
+  return Math.max(0, Math.min(picked, myPoints));
+}
+
 export function chooseAiBid(s: M2State, me: PlayerId): number {
   if (currentPlayer(s) !== me) throw new Error('not AI turn');
   const myPoints = s.points[me];
   if (myPoints === 0) return 0;
+
+  // MCCFR 자가학습 정책(균형 근사, scripts/cfr/)이 로드되어 있으면 그것이 본체다.
+  // 정책 미로드(청크 로딩 전)나 미적중 시 아래 휴리스틱으로 폴백.
+  const entry = lookupPolicy(policyKey(s, me));
+  if (entry) return samplePolicyBid(entry, myPoints);
+
   const V = roundValue(s, me);
   const t = loadTendency();
 
