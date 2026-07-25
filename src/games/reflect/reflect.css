@@ -43,15 +43,15 @@
   padding: 10px;
 }
 .rf-board { width: 100%; display: block; }
-.rf-cell.even { fill: #1a2030; }
-.rf-cell.odd { fill: #161b28; }
+.rf-cell.even { fill: var(--board-cell, #1a2030); }
+.rf-cell.odd { fill: var(--board-cell-alt, #161b28); }
 .rf-cell.last { fill: rgba(255, 181, 71, 0.14); }
 .rf-cell.sel { fill: rgba(255, 181, 71, 0.24); }
 
 /* 기물 */
 .rf-piece .rf-body { stroke-width: 1.5; }
-.rf-piece.owner0 .rf-body { fill: #3d3320; stroke: var(--accent); }
-.rf-piece.owner1 .rf-body { fill: #232c42; stroke: var(--accent-2); }
+.rf-piece.owner0 .rf-body { fill: var(--piece-me-fill, #3d3320); stroke: var(--accent); }
+.rf-piece.owner1 .rf-body { fill: var(--piece-opp-fill, #232c42); stroke: var(--accent-2); }
 .rf-piece .rf-body.king { stroke-width: 2.5; }
 .rf-piece .rf-glyph {
   font-size: 17px;
@@ -122,7 +122,7 @@
 .rf-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 16, 0.75);
+  background: var(--overlay-bg, rgba(10, 12, 16, 0.75));
   display: flex;
   align-items: center;
   justify-content: center;

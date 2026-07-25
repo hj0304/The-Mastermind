@@ -56,7 +56,7 @@
 .qt-card.c-G { background: linear-gradient(160deg, #6fdc8f, #229652); color: #fff; }
 .qt-card.c-K { background: linear-gradient(160deg, #3a3f4c, #14161d); color: #fff; }
 .qt-card.back {
-  background: repeating-linear-gradient(45deg, #2a3242, #2a3242 7px, #1e2534 7px, #1e2534 14px);
+  background: var(--card-back, repeating-linear-gradient(45deg, #2a3242, #2a3242 7px, #1e2534 7px, #1e2534 14px));
   border-color: var(--border);
   box-shadow: none;
 }
@@ -118,8 +118,8 @@
   width: 12px;
   height: 17px;
   border-radius: 3px;
-  background: #2a3242;
-  border: 1px solid #3a4356;
+  background: var(--board-cell, #2a3242);
+  border: 1px solid var(--board-cell-line, #3a4356);
 }
 .v-marks { display: flex; gap: 3px; font-size: 9px; font-style: normal; }
 .v-marks .me { color: var(--accent); }
@@ -167,7 +167,7 @@
 .qt-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 16, 0.78);
+  background: var(--overlay-bg, rgba(10, 12, 16, 0.78));
   display: flex;
   align-items: center;
   justify-content: center;

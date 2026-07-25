@@ -134,6 +134,81 @@ html[data-theme='skeuo'] body {
   background-attachment: fixed;
 }
 
+/* ---------- 보드 토큰 ----------
+ * 게임 CSS는 var(--board-*, 원래색) 형태로 참조한다.
+ * 미드나이트(기본)는 토큰을 정의하지 않아 각 게임의 고유 팔레트가 그대로 살고,
+ * 테마 모드에서만 보드가 해당 테마의 톤으로 통일된다.
+ * 게임 의미 색(모노크롬 흑/백, 콰트로 4색, 레이저 빨강 등)은 토큰화하지 않는다.
+ */
+
+html[data-theme='glass'] {
+  --board-surface: rgba(255, 255, 255, 0.05);
+  --board-frame: rgba(255, 255, 255, 0.18);
+  --board-cell: rgba(255, 255, 255, 0.07);
+  --board-cell-alt: rgba(255, 255, 255, 0.04);
+  --board-cell-line: rgba(255, 255, 255, 0.12);
+  --board-cell-hi: rgba(143, 192, 255, 0.26);
+  --piece-me-bg: linear-gradient(160deg, #ffd591, #ffb547);
+  --piece-me-ink: #3a2405;
+  --piece-me-fill: #4a3a1c;
+  --piece-opp-bg: linear-gradient(160deg, #8fc0ff, #4da3ff);
+  --piece-opp-ink: #071a30;
+  --piece-opp-fill: #23324c;
+  --card-back: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.12) 6px, rgba(255, 255, 255, 0.05) 6px, rgba(255, 255, 255, 0.05) 12px);
+  --overlay-bg: rgba(8, 10, 16, 0.72);
+}
+
+html[data-theme='cyber'] {
+  --board-surface: #071018;
+  --board-frame: rgba(38, 240, 255, 0.35);
+  --board-cell: #0a1622;
+  --board-cell-alt: #081220;
+  --board-cell-line: rgba(38, 240, 255, 0.2);
+  --board-cell-hi: rgba(255, 46, 136, 0.3);
+  --piece-me-bg: linear-gradient(160deg, #ff7eb0, #ff2e88);
+  --piece-me-ink: #2a0416;
+  --piece-me-fill: #3c1027;
+  --piece-opp-bg: linear-gradient(160deg, #8ff8ff, #26f0ff);
+  --piece-opp-ink: #032a30;
+  --piece-opp-fill: #0c303a;
+  --card-back: repeating-linear-gradient(45deg, #0c1a28, #0c1a28 6px, #08121e 6px, #08121e 12px);
+  --overlay-bg: rgba(3, 5, 10, 0.8);
+}
+
+html[data-theme='retro'] {
+  --board-surface: #142238;
+  --board-frame: rgba(255, 158, 61, 0.35);
+  --board-cell: #1a2c48;
+  --board-cell-alt: #162540;
+  --board-cell-line: rgba(255, 158, 61, 0.18);
+  --board-cell-hi: rgba(53, 208, 192, 0.3);
+  --piece-me-bg: linear-gradient(160deg, #ffd9a8, #ff9e3d);
+  --piece-me-ink: #3a2405;
+  --piece-me-fill: #4a3418;
+  --piece-opp-bg: linear-gradient(160deg, #7fe8dc, #35d0c0);
+  --piece-opp-ink: #06302a;
+  --piece-opp-fill: #143c38;
+  --card-back: repeating-linear-gradient(45deg, #1a2c48, #1a2c48 6px, #142238 6px, #142238 12px);
+  --overlay-bg: rgba(5, 8, 16, 0.78);
+}
+
+html[data-theme='skeuo'] {
+  --board-surface: #2b1d10;
+  --board-frame: #503722;
+  --board-cell: #3a2a17;
+  --board-cell-alt: #332413;
+  --board-cell-line: #56421f;
+  --board-cell-hi: rgba(212, 162, 74, 0.35);
+  --piece-me-bg: linear-gradient(160deg, #ffcf7a, #d4a24a);
+  --piece-me-ink: #2f1f05;
+  --piece-me-fill: #4a3818;
+  --piece-opp-bg: linear-gradient(160deg, #cfd8e4, #8fa1b8);
+  --piece-opp-ink: #16202e;
+  --piece-opp-fill: #2c3a4e;
+  --card-back: repeating-linear-gradient(45deg, #3a2a17, #3a2a17 6px, #2b1d10 6px, #2b1d10 12px);
+  --overlay-bg: rgba(10, 6, 2, 0.78);
+}
+
 /* ---------- 테마 공통 적용부 ---------- */
 
 .lobby-header h1 {
