@@ -21,6 +21,9 @@ import { chooseAiMove } from '../../src/games/monochrome/ai.ts';
 const raw = JSON.parse(readFileSync(join(process.cwd(), 'src', 'games', 'monochrome', 'policy.json'), 'utf8'));
 const policy: Record<string, Record<string, number>> = raw.policy;
 
+/** 상대 난이도 (기본 hard) — OPP=normal npm run cfr:eval:mono 처럼 지정 */
+const OPP_DIFF = (process.env.OPP ?? 'hard') as 'easy' | 'normal' | 'hard';
+
 const BLACK = 0b101010101;
 
 function maskOf(hand: number[]): number {
@@ -79,7 +82,7 @@ function playGame(policySeat: PlayerId, hybrid: boolean): PlayerId | null {
   let guard = 0;
   while (!isTerminal(s) && guard++ < 600) {
     const p = currentPlayer(s);
-    const tile = p === policySeat ? policyMove(s, p, hybrid) : chooseAiMove(s, { me: p, difficulty: 'hard' });
+    const tile = p === policySeat ? policyMove(s, p, hybrid) : chooseAiMove(s, { me: p, difficulty: OPP_DIFF });
     s = play(s, tile);
   }
   return winner(s);
