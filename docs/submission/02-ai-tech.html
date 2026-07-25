@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>The Mastermind — AI 활용 기술 문서</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+    font-size: 10.5pt; line-height: 1.62; color: #1c2430;
+  }
+  .cover { text-align: center; padding: 40mm 0 10mm; }
+  .cover .tag { font-size: 10pt; letter-spacing: .3em; color: #8a94a8; }
+  .cover h1 { font-size: 26pt; margin: 6mm 0 3mm; color: #10141c; }
+  .cover .sub { font-size: 13pt; color: #3c485c; }
+  .cover .links { margin-top: 14mm; font-size: 10.5pt; line-height: 2; }
+  .cover .links b { display: inline-block; width: 34mm; color: #6a7488; font-weight: 600; }
+  .cover .meta { margin-top: 18mm; color: #8a94a8; font-size: 9.5pt; }
+  .pagebreak { page-break-before: always; }
+  h2 { font-size: 15pt; margin: 8mm 0 3mm; padding-bottom: 1.5mm; border-bottom: 2px solid #223048; color: #10141c; }
+  h3 { font-size: 11.5pt; margin: 5mm 0 1.5mm; color: #223048; }
+  p { margin: 1.2mm 0; }
+  ul, ol { margin: 1.2mm 0 1.2mm 5mm; }
+  li { margin: .6mm 0; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0; font-size: 9.3pt; }
+  th, td { border: 1px solid #c8d0dc; padding: 1.5mm 2.2mm; text-align: left; vertical-align: top; }
+  th { background: #eef2f8; font-weight: 700; }
+  code { font-family: Consolas, monospace; font-size: 9.3pt; background: #f0f3f8; padding: 0 1mm; border-radius: 2px; }
+  .prompt {
+    background: #f6f8fb; border: 1px solid #d4dce8; border-left: 3px solid #4a6fa5;
+    border-radius: 2mm; padding: 2.5mm 3.5mm; margin: 2mm 0; font-size: 9.6pt;
+    page-break-inside: avoid;
+  }
+  .prompt .who { font-size: 8.6pt; font-weight: 700; color: #4a6fa5; margin-bottom: .8mm; }
+  .note { background: #f4f7fb; border-left: 3px solid #4a6fa5; padding: 2.5mm 3.5mm; margin: 3mm 0; font-size: 9.8pt; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="tag">NAN 2026 GAME × AI 해커톤 · 사전 과제</div>
+  <h1>AI 활용 기술 문서</h1>
+  <div class="sub">The Mastermind — 두뇌게임 아레나</div>
+  <div class="links">
+    <div><b>플레이 링크</b> https://hj0304.github.io/The-Mastermind/</div>
+    <div><b>소스 저장소</b> https://github.com/hj0304/The-Mastermind (공개 · 커밋 기록 유지)</div>
+  </div>
+  <div class="meta">AI 도구 · 프롬프트 · 활용 내역 / 게임 AI 설계 / 외부 에셋·오픈소스 출처</div>
+</div>
+
+<div class="pagebreak"></div>
+
+<h2>1. 요약 — AI를 두 층위로 활용</h2>
+<p>본 프로젝트는 AI를 <b>두 층위</b>로 사용했습니다.</p>
+<ol>
+  <li><b>개발 도구로서의 AI</b> — Anthropic <b>Claude</b>(Claude Code 환경)를 기획 리서치·설계·구현·검증·배포 전 과정의 페어 프로그래머로 사용했습니다. 저장소의 커밋 본문에 <code>Co-Authored-By: Claude</code>로 기여가 표기되어 있습니다.</li>
+  <li><b>제품 속 AI</b> — 14종 게임 각각에 맞춤 설계된 대전 AI. 머신러닝 API 호출이 아니라 <b>게임별 알고리즘</b>(베이지안 추론, 알파베타 탐색, 행렬게임 혼합전략, 후보 소거 귀납 추론 등)을 순수 TypeScript로 구현했고, 플레이어 성향 학습이 로컬에 누적됩니다.</li>
+</ol>
+
+<h2>2. AI 도구 사용 내역 (개발 과정)</h2>
+<table>
+  <tr><th>항목</th><th>내용</th></tr>
+  <tr><td>도구</td><td>Claude Code (Anthropic Claude 모델) — CLI/데스크톱 에이전트 환경</td></tr>
+  <tr><td>활용 범위</td><td>원작 룰 리서치·검증, 게임 룰 명세 작성, 게임 엔진·AI·UI 구현, 온라인 전송 계층 설계, 버그 재현·수정, 브라우저 자동 검증, UI/UX·테마 시스템, 문서 작성</td></tr>
+  <tr><td>개발 방식</td><td>사람이 방향·요구사항·검수를 담당하고, AI가 구현·검증을 수행하는 페어 프로그래밍. GitHub Flow(기능 브랜치 → PR → main 병합)로 모든 변경이 PR 단위로 기록됨</td></tr>
+  <tr><td>기여 표기</td><td>AI가 작성에 참여한 커밋은 본문에 Co-Authored-By로 명시 (커밋 기록에서 확인 가능)</td></tr>
+</table>
+
+<h3>2.1 개발 워크플로우</h3>
+<ol>
+  <li><b>룰 리서치</b> — 원작(더 지니어스 시리즈 방영 게임)의 룰을 나무위키 원문에서 확인하고, 구현 기준 명세(<code>docs/GAME_RULES.md</code>)로 정리. 구현 후에는 원작 문서 13건을 전수 재대조해 불일치를 수정.</li>
+  <li><b>구현</b> — 게임마다 엔진(순수 함수)·AI·화면을 분리 구현. 엔진은 부수효과 없는 순수 TypeScript라 AI 탐색과 온라인 동기화에 그대로 재사용.</li>
+  <li><b>검증</b> — AI가 브라우저를 직접 조작해 검증: 실제 릴레이를 경유하는 두 탭 온라인 대전, 360px 모바일 뷰포트 점검, 테마별 스크린샷 확인 등. 빌드는 타입 검사(<code>tsc</code>)를 포함.</li>
+  <li><b>배포</b> — main 병합 시 GitHub Actions가 GitHub Pages로 자동 배포.</li>
+</ol>
+
+<h3>2.2 AI 대상 주요 프롬프트/지시 사항 (실사용 예)</h3>
+<div class="prompt"><div class="who">룰 검증 지시</div>
+"(나무위키 링크 첨부) 너가 게임 룰을 숙지하고 UI/UX를 수정했는지 의문이 들어. 위 링크를 샅샅이 뒤져서 모든 게임 룰을 숙지하고 다시 한번 볼래?" — 원작 문서 13건 전수 대조로 이어져, 원작의 '제시 즉시 게이지 갱신' 공개 정보가 온라인 모드에서 누락된 결함을 발견·수정.</div>
+<div class="prompt"><div class="who">버그 리포트</div>
+"의심 윷놀이를 플레이했는데 윷판의 정가운데 지점에서 윷이 나왔는데 지름길을 타지 않는 케이스를 발견했어. 지름길을 탈 수 있도록 수정해줘." — 엔진 시뮬레이션으로 로직은 정상임을 확인, 완주 분기가 판 위에 표시되지 않던 UI 문제를 특정해 수정.</div>
+<div class="prompt"><div class="who">설계 요구</div>
+"디자인 시안 4종을 각 디자인의 느낌에 맞게 모든 페이지에 적용하고, 토글 버튼으로 유저가 테마를 선택할 수 있게 해줘. 지금 디자인도 저장해서 선택지에 포함해줘." — CSS 변수 기반 5종 테마 시스템으로 구현(게임 의미 색은 불변 원칙).</div>
+<div class="prompt"><div class="who">품질 기준 제시 (프로젝트 지침)</div>
+"추측하지 말 것 · 명세와 다르면 멈추고 물을 것 · 요청 범위 밖의 코드를 고치지 말 것 · 작업을 검증 가능한 목표로 바꿔 통과할 때까지 반복할 것" — 저장소 CLAUDE.md에 상시 지침으로 두어 모든 작업에 적용.</div>
+
+<div class="pagebreak"></div>
+
+<h2>3. 게임 AI 설계 (제품 속 AI)</h2>
+<div class="note"><b>공정성 원칙</b> — 모든 AI는 사람과 동일한 공개 정보만 사용합니다. 은닉 정보(상대 손패, 숨은 벽, 주사위 눈)는 코드 수준에서 접근하지 않으며, 각 <code>ai.ts</code> 파일 서두에 사용 가능한 정보의 경계를 명문화했습니다.</div>
+
+<h3>3.1 게임별 AI 기법</h3>
+<table>
+  <tr><th>게임</th><th>핵심 기법</th></tr>
+  <tr><td>밀림장기</td><td>반복 심화 알파베타 탐색 + 치환표 (시간 예산 900ms, 통상 깊이 9~13)</td></tr>
+  <tr><td>콰트로</td><td>공개 정보 기반 가상 플레이어 손패 추적 + 교환 기대값 평가, 0 카드 주입 방해 전략</td></tr>
+  <tr><td>블라인드 포커</td><td>카드 카운팅 + 상대 행동 기반 자기 카드 베이지안 역추론 + 블러핑 성향 학습</td></tr>
+  <tr><td>윷 대전</td><td>행렬게임 혼합전략(동시 선택 심리전) + 사람 선택 분포 학습 + 이동 가치 평가</td></tr>
+  <tr><td>윷과 거짓말</td><td>베이지안 거짓말 확률 추정 + 사람의 거짓 빈도·의심률 학습</td></tr>
+  <tr><td>리플렉트</td><td>반복 심화 알파베타 + 치환표, 레이저-왕 근접도 평가로 전진 동기 부여</td></tr>
+  <tr><td>모노크롬</td><td>베이지안 손패 추적 + 상대 신념 모델링(상대가 내 정보로 무엇을 아는지) + 종반 완전 탐색 + 성향 학습</td></tr>
+  <tr><td>모노크롬 II</td><td>잔여 포인트 구간 추적 + 점수 압박 기반 입찰(블로토 게임 이론)</td></tr>
+  <tr><td>야누스 포커</td><td>카드 카운팅 + 홀짝 제약 추론 + 베이지안 뒷면 추정 + 기대값 베팅</td></tr>
+  <tr><td>암전 미궁</td><td>공개된 충돌/통과 정보 완전 기억 + 미지 간선의 확률 기대비용 최단경로 탐색</td></tr>
+  <tr><td>순환선</td><td>순환 완성 가능성 판정(증인 사이클) + 메모이제이션 승패 탐색(벽시계 예산 2.5초)</td></tr>
+  <tr><td>모노크롬 레이즈</td><td>블로토식 배치 설계 + 칩 신호 기반 타일 추론 + 콜/폴드 기대값</td></tr>
+  <tr><td>수(數)의 진</td><td>은폐 기물 정체 확률 분포 + "움직인 기물은 지뢰가 아니다" 이동 이력 추론 + 위협 분석</td></tr>
+  <tr><td>히든 포뮬러</td><td>규칙 은행 후보를 힌트와 대조해 소거하는 베이지안 귀납 추론 — 확정 시에만 버저</td></tr>
+</table>
+
+<h3>3.2 대표 사례 심화</h3>
+<p><b>모노크롬 — 상대 신념 모델링.</b> 상대의 남은 타일 분포를 색·승패 기록으로 베이지안 갱신하는 데 그치지 않고, "상대가 내 공개 정보로 무엇을 알고 있는가"까지 모델링해 블러핑 여지를 계산합니다. 라운드별 제시 랭크 분포는 localStorage에 누적되어 판을 거듭할수록 개인화됩니다.</p>
+<p><b>히든 포뮬러 — 오답 없는 귀납 추론.</b> AI는 숨은 규칙을 읽지 않습니다. 규칙 은행의 후보들을 힌트와 대조해 소거하고, 후보가 하나로 확정되거나 모든 후보의 답이 일치할 때만 버저를 누릅니다. 수 제시는 후보 판별력을 최대화하는 능동 실험으로 선택합니다 — 사람과 같은 방식으로 추론하되, 실수만 없는 상대입니다.</p>
+<p><b>윷과 거짓말 — 성향 학습.</b> 의심으로 공개된 선언만을 근거로 사람의 거짓말 빈도와 값별 분포, 값별 의심률을 학습해 베이즈 추정에 반영합니다. 믿어준 선언의 실제 값은 AI도 영원히 알 수 없습니다(공정성 원칙).</p>
+
+<h2>4. 시스템 아키텍처</h2>
+<ul>
+  <li><b>스택</b> — TypeScript + React 19 + Vite. 게임 엔진·AI는 외부 라이브러리 없이 순수 TypeScript.</li>
+  <li><b>구조</b> — 게임마다 <code>engine.ts</code>(순수 함수 룰) / <code>ai.ts</code>(대전 AI) / <code>view.ts</code>(좌석별 정보 마스킹) / 화면 컴포넌트로 분리.</li>
+  <li><b>온라인 멀티</b> — 서버 없이 공개 nostr 릴레이를 데이터 통로로 사용(방 코드에서 유도한 키로 AES-GCM 암호화). 호스트 권위 방식 + 좌석별 관점 뷰만 전송. 재연결·메시지 순번 순서 보장·재전송 유실 복구·좌석 고정을 전송 계층에서 처리.</li>
+  <li><b>치팅 방지</b> — 동시 선택·비밀 설계는 <b>커밋-리빌</b>(SHA-256 해시 커밋 후 공개·검증)로, 주사위는 <b>분산 생성</b>(굴리는 쪽 난수 커밋 + 상대 난수 합산)으로 호스트조차 엿볼 수 없게 설계.</li>
+  <li><b>테마 시스템</b> — CSS 변수 토큰 기반 5종 테마. 게임 의미 색(흑/백 타일, 4색 카드, 레이저 등)은 테마와 무관하게 불변으로 두어 룰 가독성을 보존.</li>
+</ul>
+
+<h2>5. 외부 에셋 / 오픈소스 출처</h2>
+<table>
+  <tr><th>구분</th><th>이름</th><th>라이선스 / 비고</th></tr>
+  <tr><td>라이브러리</td><td>React 19, React DOM</td><td>MIT</td></tr>
+  <tr><td>라이브러리</td><td>Vite, @vitejs/plugin-react, TypeScript</td><td>MIT / Apache-2.0 (빌드 도구)</td></tr>
+  <tr><td>라이브러리</td><td>nostr-tools</td><td>MIT — 온라인 대전 이벤트 서명/검증</td></tr>
+  <tr><td>인프라</td><td>공개 nostr 릴레이 (relay.damus.io, nos.lol, relay.primal.net)</td><td>공개 릴레이 — 게임 데이터는 암호화되어 경유만 함</td></tr>
+  <tr><td>폰트</td><td>Pretendard Variable</td><td>SIL OFL 1.1</td></tr>
+  <tr><td>폰트</td><td>Space Grotesk · Chakra Petch · Orbitron · Cinzel (Google Fonts)</td><td>SIL OFL 1.1 — 테마별 디스플레이 폰트</td></tr>
+  <tr><td>그래픽</td><td>이모지(게임 아이콘 등)</td><td>플랫폼 기본 이모지 — 별도 이미지 에셋 없음</td></tr>
+  <tr><td>그래픽·사운드</td><td>기타 이미지/사운드 에셋</td><td>사용하지 않음 — 모든 비주얼은 CSS/SVG로 직접 제작</td></tr>
+</table>
+<h3>룰 출처 표기</h3>
+<p>각 게임은 더 지니어스 시리즈 방영 게임의 룰(나무위키 '더 지니어스/역대 게임' 및 개별 게임 문서에서 확인)과 그 원류 보드게임(동물장기, Khet, 베니스 커넥션, 마법의 미로, 챠오챠오, 스트라테고, 파라오코드 등)을 참고해 <b>룰을 재해석·재구현</b>한 것입니다. 원작의 그래픽·명칭·소스는 일절 사용하지 않았으며, 게임 이름도 모두 새로 지었습니다. 변형한 규칙은 게임 내 설명서와 <code>docs/GAME_RULES.md</code>에 원작과의 차이로 명시되어 있습니다.</p>
+
+</body>
+</html>
