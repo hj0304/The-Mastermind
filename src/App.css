@@ -217,7 +217,8 @@
 
 .lb-xp-label { font-size: 10px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
-.lb-currencies { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+.lb-currencies { display: flex; flex-direction: column; gap: 6px; justify-content: center; align-items: stretch; }
+.lb-cur { flex: none; text-align: center; }
 
 .lb-cur {
   font-size: 13px;
