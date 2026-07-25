@@ -6,8 +6,14 @@
 
 export type GameStatus = 'playable' | 'wip' | 'planned';
 
+export type GameGenre = 'board' | 'card' | 'mind';
+
 export interface GameMeta {
   id: string;
+  /** 로비 필터용 장르 */
+  genre: GameGenre;
+  /** 인기 게임 뱃지 */
+  hot?: boolean;
   /** 카드·헤더에 쓰는 대표 이모지 */
   icon: string;
   /** 서비스 표기명 */
@@ -26,6 +32,7 @@ export interface GameMeta {
 export const GAMES: GameMeta[] = [
   {
     id: 'jungle-janggi',
+    genre: 'board',
     icon: '🐯',
     name: '밀림장기',
     tagline: '3×4 초소형 장기판, 잡은 말은 내 말이 된다',
@@ -35,6 +42,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'quattro',
+    genre: 'card',
     icon: '🎴',
     name: '콰트로',
     tagline: '색도 숫자도 겹치지 않는 4장을, 상대보다 높게 완성하라',
@@ -44,6 +52,8 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'blind-poker',
+    genre: 'card',
+    hot: true,
     icon: '🃏',
     name: '블라인드 포커',
     tagline: '내 카드만 못 보는 포커 — 상대의 베팅을 읽어라',
@@ -53,6 +63,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'yut-tactics',
+    genre: 'board',
     icon: '🪵',
     name: '윷 대전',
     tagline: '윷을 던지지 말고 선택하라 — 심리전이 된 윷놀이',
@@ -62,6 +73,8 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'yut-bluff',
+    genre: 'mind',
+    hot: true,
     icon: '🤥',
     name: '윷과 거짓말',
     tagline: '결과는 나만 안다 — 속이고, 의심하고, 잡아내라',
@@ -71,6 +84,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'reflect',
+    genre: 'board',
     icon: '🪞',
     name: '리플렉트',
     tagline: '거울을 조종해 광선으로 왕을 노리는 반사 장기',
@@ -80,6 +94,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'monochrome',
+    genre: 'mind',
     icon: '🌗',
     name: '모노크롬',
     tagline: '0~8 아홉 장, 보이는 건 흑백뿐 — 아홉 번의 수읽기',
@@ -89,6 +104,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'monochrome-2',
+    genre: 'mind',
     icon: '💰',
     name: '모노크롬 II',
     tagline: '99포인트를 쪼개 거는 아홉 번의 눈치 경매',
@@ -98,6 +114,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'janus-poker',
+    genre: 'card',
     icon: '🎭',
     name: '야누스 포커',
     tagline: '앞면은 모두에게, 뒷면은 나에게만 — 양면베팅의 승부',
@@ -107,6 +124,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'dark-maze',
+    genre: 'board',
     icon: '🕯️',
     name: '암전 미궁',
     tagline: '보이지 않는 벽, 부딪히면 처음부터 — 기억만이 지도다',
@@ -116,6 +134,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'loop-line',
+    genre: 'board',
     icon: '🛤️',
     name: '순환선',
     tagline: '철로를 이어 순환선을 완성하는 마지막 타일의 주인공이 돼라',
@@ -125,6 +144,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'monochrome-raise',
+    genre: 'mind',
     icon: '🪙',
     name: '모노크롬 레이즈',
     tagline: '순서와 칩을 먼저 설계하라 — 콜과 폴드의 숫자 전쟁',
@@ -134,6 +154,8 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'number-janggi',
+    genre: 'board',
+    hot: true,
     icon: '🔢',
     name: '수(數)의 진',
     tagline: '합이 10을 넘으면 큰 수가, 못 넘으면 작은 수가 이긴다',
@@ -143,6 +165,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: 'hidden-formula',
+    genre: 'mind',
     icon: '🧮',
     name: '히든 포뮬러',
     tagline: '숨겨진 연산 규칙을 먼저 간파하는 자가 이긴다',
