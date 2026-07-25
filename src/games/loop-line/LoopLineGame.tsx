@@ -15,6 +15,7 @@ import { chooseAiAction, recordGameEnd } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import LoopLineOnline from './LoopLineOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -212,7 +213,7 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="ll-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="ll-status">
         <span className={`ll-turn ${!state.result && ((state.phase === 'play' && state.turn === HUMAN) || (state.phase === 'attempt' && state.attempter === HUMAN)) ? 'me' : 'ai'}`}>
@@ -328,11 +329,12 @@ export default function LoopLineGame({ onExit }: { onExit: () => void }) {
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">순환선</span>
+      {surrender && <SurrenderButton gameId="loop-line" onExit={onExit} />}
       <RuleBookButton gameId="loop-line" gameName="순환선" className="rb-btn header-rb" />
     </header>
   );

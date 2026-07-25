@@ -11,6 +11,7 @@ import {
 import { aiDecide, aiSetup, recordGameEnd, recordShowdownForLearning } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import { TrackRow, tileColor } from './track.tsx';
 import MonochromeRaiseOnline from './MonochromeRaiseOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -195,7 +196,7 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
 
   return (
     <div className="rz-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && state.phase !== 'gameover'} />
 
       <div className="rz-scoreboard">
         <div className="stack me">나 <b>{state.stash[HUMAN]}</b>칩</div>
@@ -267,11 +268,12 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">모노크롬 레이즈</span>
+      {surrender && <SurrenderButton gameId="monochrome-raise" onExit={onExit} />}
       <RuleBookButton gameId="monochrome-raise" gameName="모노크롬 레이즈" className="rb-btn header-rb" />
     </header>
   );

@@ -22,6 +22,7 @@ import {
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import { D10Overlay, OutcomeBanner, PlayerTray } from './parts.tsx';
 import YutBluffOnline from './YutBluffOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -291,7 +292,7 @@ export default function YutBluffGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="yb-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="yb-status">
         <span>
@@ -468,11 +469,12 @@ function endReason(state: BState): string {
     : '남은 말이 2개 미만이 되어 패배했습니다';
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">윷과 거짓말</span>
+      {surrender && <SurrenderButton gameId="yut-bluff" onExit={onExit} />}
       <RuleBookButton gameId="yut-bluff" gameName="윷과 거짓말" className="rb-btn header-rb" />
     </header>
   );

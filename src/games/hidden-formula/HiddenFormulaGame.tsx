@@ -26,6 +26,7 @@ import {
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import { AnswerClock, HintList, ProblemBar } from './parts.tsx';
 import HiddenFormulaOnline from './HiddenFormulaOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -333,7 +334,7 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="hf-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="hf-status">
         <div className={`hf-score me ${state.answerer === HUMAN ? 'answering' : ''}`}>
@@ -454,11 +455,12 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">히든 포뮬러</span>
+      {surrender && <SurrenderButton gameId="hidden-formula" onExit={onExit} />}
       <RuleBookButton gameId="hidden-formula" gameName="히든 포뮬러" className="rb-btn header-rb" />
     </header>
   );

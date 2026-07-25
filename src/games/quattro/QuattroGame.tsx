@@ -17,6 +17,7 @@ import { aiChooseAction, aiChooseOpen, aiWantsMulligan } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import { CardBack, CardView, COLOR_NAME } from './cards.tsx';
 import QuattroOnline from './QuattroOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -222,7 +223,7 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="qt-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="qt-status">
         <span>{statusText}</span>
@@ -349,11 +350,12 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
 }
 
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">콰트로</span>
+      {surrender && <SurrenderButton gameId="quattro" onExit={onExit} />}
       <RuleBookButton gameId="quattro" gameName="콰트로" className="rb-btn header-rb" />
     </header>
   );

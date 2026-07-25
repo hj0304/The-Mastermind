@@ -5,6 +5,8 @@ import { chooseAiBid, recordContestForLearning, recordGameEnd } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
+import BidInput from './BidInput.tsx';
 import { Gauge } from './gauge.tsx';
 import Monochrome2Online from './Monochrome2Online.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -19,7 +21,6 @@ type Phase = 'setup' | 'playing' | 'done';
 export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<Phase>('setup');
   const [state, setState] = useState<M2State | null>(null);
-  const [bidInput, setBidInput] = useState(0);
   const [aiThinking, setAiThinking] = useState(false);
   const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -34,7 +35,6 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
 
   function begin(first: PlayerId) {
     setState(createGame(first));
-    setBidInput(0);
     recorded.current = false;
     setPhase('playing');
   }
@@ -85,13 +85,11 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
     }
   }
 
-  function submitBid() {
+  function submitBid(bid: number) {
     if (!state || state.result || currentPlayer(state) !== HUMAN || aiThinking) return;
-    const bid = Math.max(0, Math.min(bidInput, state.points[HUMAN]));
-    const next = play(state, bid);
+    const next = play(state, Math.max(0, Math.min(bid, state.points[HUMAN])));
     flashRound(state, next);
     setState(next);
-    setBidInput(0);
   }
 
   if (online !== null && online !== 'panel') {
@@ -154,7 +152,7 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="m2-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="m2-scoreboard">
         <div className="score me">나 <b>{state.scores[HUMAN]}</b></div>
@@ -192,31 +190,7 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
       </div>
 
       {/* 입찰 입력 */}
-      {myTurn && (
-        <div className="m2-bid-input">
-          <div className="quick-bids">
-            {[0, 1, 5, 9, 10, 11, 15, 20].filter((v) => v <= state.points[HUMAN]).map((v) => (
-              <button key={v} className={`quick ${bidInput === v ? 'active' : ''}`} onClick={() => setBidInput(v)}>
-                {v}
-              </button>
-            ))}
-          </div>
-          <div className="bid-row">
-            <input
-              type="range"
-              min={0}
-              max={state.points[HUMAN]}
-              value={bidInput}
-              onChange={(e) => setBidInput(+e.target.value)}
-            />
-            <span className={`bid-preview ${bidInput <= 9 ? 'black' : 'white'}`}>{bidInput}</span>
-            <button className="primary-btn" onClick={submitBid}>제시</button>
-          </div>
-          <p className="bid-note">
-            {bidInput <= 9 ? '흑으로 표시됩니다 (0~9)' : '백으로 표시됩니다 (10~99)'}
-          </p>
-        </div>
-      )}
+      {myTurn && <BidInput max={state.points[HUMAN]} onSubmit={submitBid} />}
 
       {/* 히스토리: 상대 숫자는 비공개 (색만) */}
       <div className="m2-history">
@@ -250,11 +224,12 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
 }
 
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">모노크롬 II</span>
+      {surrender && <SurrenderButton gameId="monochrome-2" onExit={onExit} />}
       <RuleBookButton gameId="monochrome-2" gameName="모노크롬 II" className="rb-btn header-rb" />
     </header>
   );

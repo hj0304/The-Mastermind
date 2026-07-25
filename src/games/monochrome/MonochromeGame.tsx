@@ -5,6 +5,7 @@ import { chooseAiMove, loadTendency, recordGameEnd, recordHumanPlay } from './ai
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import MonochromeOnline from './MonochromeOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -168,7 +169,7 @@ export default function MonochromeGame({ onExit }: Props) {
 
   return (
     <div className="mono-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !isTerminal(state)} />
 
       <div className="mono-scoreboard">
         <div className="score me">
@@ -272,13 +273,14 @@ export default function MonochromeGame({ onExit }: Props) {
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>
         ← 로비
       </button>
       <span className="game-title">모노크롬</span>
+      {surrender && <SurrenderButton gameId="monochrome" onExit={onExit} />}
       <RuleBookButton gameId="monochrome" gameName="모노크롬" className="rb-btn header-rb" />
     </header>
   );

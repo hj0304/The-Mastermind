@@ -5,6 +5,7 @@ import { viewFor } from './view.ts';
 import type { NetRoom } from '../../net/room.ts';
 import { makeCommitment, verifyCommitment } from '../../net/commit.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import BidInput from './BidInput.tsx';
 import { Gauge } from './gauge.tsx';
 import './monochrome2.css';
 import '../../net/online.css';
@@ -73,7 +74,6 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
   const opp: PlayerId = (1 - me) as PlayerId;
   const stateRef = useRef<M2State | null>(null);
   const [view, setView] = useState<M2State | null>(null);
-  const [bidInput, setBidInput] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
   /** 상대 리빌이 커밋 해시와 불일치 — 조작된 클라이언트 */
@@ -237,13 +237,13 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
     onExit();
   }
 
-  async function submitBid() {
+  async function submitBid(rawBid: number) {
     if (!view || view.result) return;
     const d = duel.current;
     if (d.myHash !== null) return; // 이미 제출
     const iAmLeader = view.leader === me;
     if (!iAmLeader && d.oppHash === null) return; // 후공은 선의 커밋(색 공개)을 기다린다
-    const bid = Math.max(0, Math.min(bidInput, view.points[me]));
+    const bid = Math.max(0, Math.min(rawBid, view.points[me]));
     const c = await makeCommitment(bid);
     d.myValue = bid;
     d.mySalt = c.salt;
@@ -258,7 +258,6 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
       tier: iAmLeader ? gaugeTier(view.points[me] - bid) : null,
     } satisfies NetMsg);
     maybeReveal();
-    setBidInput(0);
     bump();
   }
 
@@ -342,29 +341,7 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
       </div>
 
       {myTurn && !state.result && (
-        <div className="m2-bid-input">
-          <div className="quick-bids">
-            {[0, 1, 5, 9, 10, 11, 15, 20].filter((v) => v <= state.points[me]).map((v) => (
-              <button key={v} className={`quick ${bidInput === v ? 'active' : ''}`} onClick={() => setBidInput(v)}>
-                {v}
-              </button>
-            ))}
-          </div>
-          <div className="bid-row">
-            <input
-              type="range"
-              min={0}
-              max={state.points[me]}
-              value={bidInput}
-              onChange={(e) => setBidInput(+e.target.value)}
-            />
-            <span className={`bid-preview ${bidInput <= 9 ? 'black' : 'white'}`}>{bidInput}</span>
-            <button className="primary-btn" onClick={() => void submitBid()}>제시</button>
-          </div>
-          <p className="bid-note">
-            {bidInput <= 9 ? '흑으로 표시됩니다 (0~9)' : '백으로 표시됩니다 (10~99)'}
-          </p>
-        </div>
+        <BidInput max={state.points[me]} onSubmit={(bid) => void submitBid(bid)} />
       )}
 
       {/* 히스토리: 상대 숫자는 비공개 (무승부만 공개) */}

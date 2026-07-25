@@ -16,6 +16,7 @@ import { chooseAiStep, recordGameEnd, recordHumanTurn } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import DarkMazeOnline from './DarkMazeOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -218,7 +219,7 @@ export default function DarkMazeGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="dm-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="dm-status">
         <div className={`dm-side me ${state.turn === HUMAN && !state.result ? 'active' : ''}`}>
@@ -370,11 +371,12 @@ export default function DarkMazeGame({ onExit }: { onExit: () => void }) {
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">암전 미궁</span>
+      {surrender && <SurrenderButton gameId="dark-maze" onExit={onExit} />}
       <RuleBookButton gameId="dark-maze" gameName="암전 미궁" className="rb-btn header-rb" />
     </header>
   );

@@ -16,6 +16,7 @@ import {
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import JanusPokerOnline from './JanusPokerOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -191,7 +192,7 @@ export default function JanusPokerGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="jp-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="jp-status">
         <div className="jp-stack me">나 <b>{state.stacks[HUMAN]}</b>칩</div>
@@ -444,11 +445,12 @@ function LevelPicker({
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">야누스 포커</span>
+      {surrender && <SurrenderButton gameId="janus-poker" onExit={onExit} />}
       <RuleBookButton gameId="janus-poker" gameName="야누스 포커" className="rb-btn header-rb" />
     </header>
   );
