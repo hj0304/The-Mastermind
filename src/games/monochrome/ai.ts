@@ -19,6 +19,8 @@ import {
   opponentTileProbabilities,
   tileColor,
 } from './engine.ts';
+import type { PolicyEntry } from './policy.ts';
+import { lookupPolicy, policyKey } from './policy.ts';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 
@@ -261,6 +263,14 @@ export function chooseAiMove(s: MonoState, ctx: AiContext): number {
 
   if (ctx.difficulty === 'easy') return chooseEasy(s, hand);
 
+  // hard: MCCFR 자가학습 정책(균형 근사, scripts/cfr/)이 로드되어 있으면 초·중반은 정책이 본체.
+  // 종반(6장 이하)은 정확한 벨리프 열거 + 완전 탐색이 더 정밀해 기존 로직을 유지한다.
+  // 자가대국 평가(2,000판): 이 하이브리드가 기존 휴리스틱 상대 승률 62.9% (순수 정책은 48.8%).
+  if (ctx.difficulty === 'hard' && hand.length > 6) {
+    const entry = lookupPolicy(policyKey(s, ctx.me));
+    if (entry) return samplePolicyTile(entry, hand);
+  }
+
   // 상대 잔여 손패 분포 (pending이 있으면 pending 타일 포함)
   let dist = opponentHandDistribution(s, me);
   if (ctx.difficulty === 'hard') {
@@ -283,6 +293,20 @@ export function chooseAiMove(s: MonoState, ctx: AiContext): number {
     return chooseAsFollower(s, hand, belief, ctx);
   }
   return chooseAsLeader(s, hand, dist, ctx);
+}
+
+/** 학습 정책 항목에서 타일을 확률 표집 (혼합 전략 유지 — 패턴 노출 방지) */
+function samplePolicyTile(entry: PolicyEntry, hand: number[]): number {
+  let r = Math.random();
+  for (const [tile, p] of Object.entries(entry)) {
+    r -= p;
+    if (r <= 0) {
+      const t = Number(tile);
+      if (hand.includes(t)) return t; // 키에 손패 마스크가 포함되므로 항상 참
+      break;
+    }
+  }
+  return hand[0];
 }
 
 function chooseEasy(s: MonoState, hand: number[]): number {

@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "cfr:train": "esbuild scripts/cfr/train-blind-poker.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/train.mjs && node scripts/cfr/.out/train.mjs",
-    "cfr:eval": "esbuild scripts/cfr/eval-blind-poker.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval.mjs && node scripts/cfr/.out/eval.mjs"
+    "cfr:eval": "esbuild scripts/cfr/eval-blind-poker.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval.mjs && node scripts/cfr/.out/eval.mjs",
+    "cfr:train:mono": "esbuild scripts/cfr/train-monochrome.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/train-mono.mjs && node scripts/cfr/.out/train-mono.mjs",
+    "cfr:eval:mono": "esbuild scripts/cfr/eval-monochrome.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval-mono.mjs && node scripts/cfr/.out/eval-mono.mjs"
   },
   "dependencies": {
     "nostr-tools": "^2.23.12",
