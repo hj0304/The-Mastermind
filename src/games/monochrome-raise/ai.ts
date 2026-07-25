@@ -10,6 +10,9 @@
 
 import type { PlayerId, RaiseSetup, RaiseState } from './engine.ts';
 import { maxCallable } from './engine.ts';
+import type { PolicyEntry } from './policy.ts';
+import { ROOT_KEY, lookupPolicy } from './policy.ts';
+import { raiseTemplates } from './templates.ts';
 
 // ---------- 상대(사람) 성향 학습 ----------
 
@@ -55,8 +58,35 @@ function bluffRate(): number {
 
 // ---------- 배치 생성 ----------
 
-/** EXTREME 배치: 정석/블러프/밸런스 아키타입 중 무작위 + 변주 */
+/** 정책 항목에서 확률 표집 */
+function sampleEntry(entry: PolicyEntry): string {
+  let r = Math.random();
+  let picked = Object.keys(entry)[0];
+  for (const [k, p] of Object.entries(entry)) {
+    r -= p;
+    if (r <= 0) {
+      picked = k;
+      break;
+    }
+  }
+  return picked;
+}
+
+/**
+ * EXTREME 배치 — MCCFR 자가학습으로 얻은 배치 템플릿 혼합 전략(균형 근사)에서 표집.
+ * 정책 미로드 시 기존 아키타입 휴리스틱으로 폴백.
+ */
 export function aiSetup(): RaiseSetup {
+  const entry = lookupPolicy(ROOT_KEY);
+  if (entry) {
+    const setup = raiseTemplates()[Number(sampleEntry(entry))];
+    if (setup) return { order: [...setup.order], bets: [...setup.bets] };
+  }
+  return heuristicSetup();
+}
+
+/** 기존 배치 휴리스틱: 정석/블러프/밸런스 아키타입 중 무작위 + 변주 */
+function heuristicSetup(): RaiseSetup {
   const shuffle = <T,>(arr: T[]): T[] => {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
@@ -139,6 +169,31 @@ export function opponentTileDist(s: RaiseState, me: PlayerId): number[] {
 
 // ---------- 콜/폴드 결정 ----------
 
+/** MCCFR 정책의 결정 정보집합 키 — scripts/cfr/train-monochrome-raise.ts 와 동일해야 한다 */
+function chipBucket(x: number): number {
+  return x <= 1 ? 0 : x <= 2 ? 1 : x <= 3 ? 2 : x <= 5 ? 3 : x <= 8 ? 4 : 5;
+}
+
+export function policyKey(s: RaiseState, me: PlayerId): string {
+  const opp = (1 - me) as PlayerId;
+  const r = s.round;
+  const myTile = s.order[me][r];
+  const myBetB = chipBucket(s.bets[me][r]);
+  const needB = chipBucket(s.bets[opp][r] - s.bets[me][r]);
+  const sdiff = Math.max(0, Math.min(Math.round((s.stash[me] - s.stash[opp]) / 8) + 4, 8));
+  const unseen = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  for (const h of s.history) if (h.revealed) unseen.delete(h.tiles[opp]);
+  let higher = 0;
+  for (const v of unseen) if (v > myTile) higher++;
+  const oppBet = s.bets[opp][r];
+  let oppRank = 0;
+  for (let i = r + 1; i < 10; i++) if (s.bets[opp][i] > oppBet) oppRank++;
+  oppRank = Math.min(oppRank, 3);
+  const key =
+    r | (myTile << 4) | (myBetB << 8) | (needB << 11) | (sdiff << 14) | (higher << 18) | (oppRank << 22);
+  return key.toString(36);
+}
+
 export function aiDecide(s: RaiseState, me: PlayerId): 'call' | 'fold' {
   if (s.toDecide !== me) throw new Error('not AI decision');
   const opp = (1 - me) as PlayerId;
@@ -149,6 +204,10 @@ export function aiDecide(s: RaiseState, me: PlayerId): 'call' | 'fold' {
   const need = oppBet - myBet;
 
   if (maxCallable(s, me) < need) return 'fold';
+
+  // MCCFR 자가학습 정책(균형 근사)이 로드되어 있으면 그것이 본체 — 미적중 시 아래 휴리스틱 폴백
+  const entry = lookupPolicy(policyKey(s, me));
+  if (entry) return sampleEntry(entry) === 'c' ? 'call' : 'fold';
 
   const dist = opponentTileDist(s, me);
   let pWin = 0;
