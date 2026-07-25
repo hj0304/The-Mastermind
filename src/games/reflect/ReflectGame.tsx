@@ -5,6 +5,7 @@ import { chooseAiMove } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import { CELL, DIR_ARROW, PieceGfx, rotLabel } from './pieces.tsx';
 import ReflectOnline from './ReflectOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -161,7 +162,7 @@ export default function ReflectGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="rf-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="rf-status">
         <span>
@@ -294,11 +295,12 @@ export default function ReflectGame({ onExit }: { onExit: () => void }) {
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">리플렉트</span>
+      {surrender && <SurrenderButton gameId="reflect" onExit={onExit} />}
       <RuleBookButton gameId="reflect" gameName="리플렉트" className="rb-btn header-rb" />
     </header>
   );

@@ -14,6 +14,7 @@ import { loadPolicy } from './policy.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import BlindPokerOnline from './BlindPokerOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -173,7 +174,7 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="bp-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && state.phase !== 'gameover'} />
 
       <div className="bp-scoreboard">
         <div className="stack me">
@@ -327,13 +328,14 @@ function HandResultView({ hand }: { hand: BpState['history'][number] }) {
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>
         ← 로비
       </button>
       <span className="game-title">블라인드 포커</span>
+      {surrender && <SurrenderButton gameId="blind-poker" onExit={onExit} />}
       <RuleBookButton gameId="blind-poker" gameName="블라인드 포커" className="rb-btn header-rb" />
     </header>
   );

@@ -14,6 +14,7 @@ import { chooseAiMove, chooseAiSticks, recordGameEnd, recordPickForLearning } fr
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import YutBoard from '../shared/YutBoard.tsx';
 import type { BoardPiece } from '../shared/YutBoard.tsx';
 import { PlayerTray } from './tray.tsx';
@@ -236,7 +237,7 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="yt-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="yt-status">
         <span>
@@ -398,11 +399,12 @@ export default function YutTacticsGame({ onExit }: { onExit: () => void }) {
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
       <span className="game-title">윷 대전</span>
+      {surrender && <SurrenderButton gameId="yut-tactics" onExit={onExit} />}
       <RuleBookButton gameId="yut-tactics" gameName="윷 대전" className="rb-btn header-rb" />
     </header>
   );

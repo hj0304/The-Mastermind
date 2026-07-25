@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { RULEBOOK } from './rulebook.ts';
 import './rulebook.css';
 
@@ -25,7 +26,8 @@ export function RuleBook({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  return (
+  // 카드/헤더의 transform·backdrop-filter가 fixed 오버레이를 가두지 않도록 body에 포털로 띄운다
+  return createPortal(
     <div className="rb-overlay" onClick={onClose}>
       <div className="rb-panel" onClick={(e) => e.stopPropagation()}>
         <header className="rb-head">
@@ -60,7 +62,8 @@ export function RuleBook({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

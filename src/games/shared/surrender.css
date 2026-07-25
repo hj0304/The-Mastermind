@@ -1,0 +1,67 @@
+/* 항복 버튼 + 확인 모달 — Surrender.tsx */
+
+.surrender-btn {
+  margin-left: auto; /* 게임 헤더에서 오른쪽 끝(설명서 버튼 옆)으로 */
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(214, 84, 84, 0.45);
+  background: rgba(214, 84, 84, 0.1);
+  color: #e08a8a;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.surrender-btn:hover {
+  border-color: #d65454;
+  background: rgba(214, 84, 84, 0.2);
+  color: #f0a0a0;
+}
+
+.sr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6, 9, 14, 0.72);
+  backdrop-filter: blur(4px);
+  animation: sr-fade 0.2s ease;
+}
+@keyframes sr-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sr-panel {
+  width: min(360px, 100%);
+  padding: 22px 20px;
+  text-align: center;
+  background: #141a26;
+  border: 1px solid rgba(140, 160, 190, 0.22);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+.sr-panel h3 { margin: 0 0 8px; font-size: 1.05rem; color: #f0f4fb; }
+.sr-panel p { margin: 0 0 16px; font-size: 13px; color: #94a3bd; }
+
+.sr-actions { display: flex; gap: 8px; justify-content: center; }
+.sr-actions .sr-yes {
+  padding: 9px 18px;
+  border-radius: 9px;
+  border: 1px solid #d65454;
+  background: rgba(214, 84, 84, 0.18);
+  color: #f0a0a0;
+  font-weight: 700;
+}
+.sr-actions .sr-yes:hover { background: rgba(214, 84, 84, 0.32); }
+.sr-actions .sr-no {
+  padding: 9px 18px;
+  border-radius: 9px;
+  border: 1px solid rgba(140, 160, 190, 0.3);
+  background: rgba(140, 160, 190, 0.1);
+  color: #c8d3e6;
+  font-weight: 700;
+}
+.sr-actions .sr-no:hover { background: rgba(140, 160, 190, 0.2); }

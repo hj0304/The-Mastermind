@@ -15,6 +15,7 @@ import { chooseAiMove, chooseAiRevive } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import { Board, DeadTray, typeLabel } from './board.tsx';
 import NumberJanggiOnline from './NumberJanggiOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
@@ -250,7 +251,7 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="nj-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="nj-status">
         <span>
@@ -352,13 +353,14 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>
         ← 로비
       </button>
       <span className="game-title">수(數)의 진</span>
+      {surrender && <SurrenderButton gameId="number-janggi" onExit={onExit} />}
       <RuleBookButton gameId="number-janggi" gameName="수(數)의 진" className="rb-btn header-rb" />
     </header>
   );

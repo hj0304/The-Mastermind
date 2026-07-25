@@ -5,6 +5,7 @@ import { chooseAiMove } from './ai.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
+import { SurrenderButton } from '../shared/Surrender.tsx';
 import JungleJanggiOnline from './JungleJanggiOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -189,7 +190,7 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="jj-root">
-      <GameHeader onExit={onExit} />
+      <GameHeader onExit={onExit} surrender={phase === 'playing' && !state.result} />
 
       <div className="jj-status">
         <span>
@@ -312,13 +313,14 @@ function HandRow({
   );
 }
 
-function GameHeader({ onExit }: { onExit: () => void }) {
+function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrender?: boolean }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>
         ← 로비
       </button>
       <span className="game-title">밀림장기</span>
+      {surrender && <SurrenderButton gameId="jungle-janggi" onExit={onExit} />}
       <RuleBookButton gameId="jungle-janggi" gameName="밀림장기" className="rb-btn header-rb" />
     </header>
   );
