@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cfr:train": "esbuild scripts/cfr/train-blind-poker.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/train.mjs && node scripts/cfr/.out/train.mjs",
+    "cfr:eval": "esbuild scripts/cfr/eval-blind-poker.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval.mjs && node scripts/cfr/.out/eval.mjs"
   },
   "dependencies": {
     "nostr-tools": "^2.23.12",

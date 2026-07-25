@@ -14,6 +14,8 @@
 
 import type { BpAction, BpState, PlayerId } from './engine.ts';
 import { legalInfo, potSize, unseenCounts } from './engine.ts';
+import type { PolicyEntry } from './policy.ts';
+import { lookupPolicy, policyHist } from './policy.ts';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 
@@ -158,6 +160,14 @@ export function chooseAiAction(s: BpState, ctx: AiContext): BpAction {
 
   if (ctx.difficulty === 'easy') return chooseEasy(oppCard, info);
 
+  // hard: CFR+ 자가학습 정책(내시 균형 근사)이 로드되어 있으면 그것이 본체다.
+  // 자가대국 평가에서 아래 휴리스틱을 상대로 승률 70%를 기록했다 (scripts/cfr/).
+  // 정책 미로드(청크 로딩 전)나 미학습 상황은 기존 휴리스틱으로 폴백.
+  if (ctx.difficulty === 'hard') {
+    const entry = lookupPolicy(`${oppCard}|${policyHist(s)}`);
+    if (entry) return samplePolicyAction(entry, info);
+  }
+
   const model = loadOpponentModel();
   const { bluffRate, foldRate } = tendencies(model);
 
@@ -219,6 +229,24 @@ export function chooseAiAction(s: BpState, ctx: AiContext): BpAction {
   }
   if (jFold > jCall && callCost > 0) return { type: 'fold' };
   return { type: 'call' };
+}
+
+/** 학습 정책 항목에서 행동을 확률 표집해 실제 상태의 합법 행동으로 사상 */
+function samplePolicyAction(entry: PolicyEntry, info: ReturnType<typeof legalInfo>): BpAction {
+  let r = Math.random();
+  let picked = 'c';
+  for (const [tok, p] of Object.entries(entry)) {
+    r -= p;
+    if (r <= 0) {
+      picked = tok;
+      break;
+    }
+  }
+  if (picked === 'f') return info.callCost > 0 ? { type: 'fold' } : { type: 'call' };
+  if (picked === 'c') return { type: 'call' };
+  const amount = picked === 'a' ? info.maxRaise : Math.min(Number(picked), info.maxRaise);
+  if (amount <= 0) return { type: 'call' };
+  return { type: 'raise', amount };
 }
 
 function chooseEasy(oppCard: number, info: ReturnType<typeof legalInfo>): BpAction {
