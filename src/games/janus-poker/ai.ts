@@ -12,6 +12,8 @@
 
 import type { Face, JPAction, JPState, PlayerId } from './engine.ts';
 import { BOTH_PENALTY, callCost, maxLevel, maxLevelFor } from './engine.ts';
+import type { PolicyEntry } from './policy.ts';
+import { lookupPolicy } from './policy.ts';
 
 // ---------- 성향 학습 ----------
 
@@ -190,11 +192,74 @@ function humanFoldRate(vsBoth: boolean): number {
   return (t.foldsVsRaise + 1) / (t.raisesFaced + 3);
 }
 
+// ---------- MCCFR 자가학습 정책 (scripts/cfr/train-janus.ts 와 동일 규약) ----------
+
+function faceCode(f: Face | null): number {
+  return f === null ? 0 : f === 'front' ? 1 : f === 'back' ? 2 : 3;
+}
+
+function levelBucket(l: number): number {
+  return l <= 0 ? 0 : l <= 3 ? l : l <= 5 ? 4 : l <= 9 ? 5 : 6;
+}
+
+function facingBucket(c: number): number {
+  return c <= 0 ? 0 : c <= 2 ? 1 : c <= 5 ? 2 : 3;
+}
+
+export function policyKey(s: JPState, me: PlayerId): string {
+  const opp = (1 - me) as PlayerId;
+  const key =
+    s.cards[me].front |
+    (s.cards[me].back << 4) |
+    (s.cards[opp].front << 8) |
+    (faceCode(s.faces[me]) << 12) |
+    (faceCode(s.faces[opp]) << 14) |
+    (levelBucket(s.level) << 16) |
+    (facingBucket(callCost(s, me)) << 19);
+  return key.toString(36);
+}
+
+/** 토큰 → 실제 행동 (상한 절삭 — 학습기와 동일) */
+function tokenToAction(s: JPState, me: PlayerId, tok: string): JPAction {
+  if (tok === 'f') return { kind: 'fold' };
+  if (s.faces[me] === null) {
+    const face: Face = tok[0] === 'F' ? 'front' : tok[0] === 'B' ? 'back' : 'both';
+    if (face === 'both' && s.faces[1 - me] === 'both') return { kind: 'fold' }; // 방어
+    const base = Math.max(1, s.level);
+    const want = tok[1] === 'c' ? base : tok[1] === 'r' ? base + 2 : base + 6;
+    const level = Math.min(want, maxLevelFor(s, me, face));
+    if (level < base) return { kind: 'fold' }; // 콜 레벨조차 커버 불가
+    return { kind: 'bet', face, level };
+  }
+  if (tok === 'c') return { kind: 'call' };
+  const want = tok === 'r' ? s.level + 2 : s.level + 6;
+  const level = Math.min(want, maxLevel(s, me));
+  if (level <= s.level) return { kind: 'call' };
+  return { kind: 'raise', level };
+}
+
+function samplePolicyToken(entry: PolicyEntry): string {
+  let r = Math.random();
+  let picked = Object.keys(entry)[0];
+  for (const [k, p] of Object.entries(entry)) {
+    r -= p;
+    if (r <= 0) {
+      picked = k;
+      break;
+    }
+  }
+  return picked;
+}
+
 /**
  * AI 행동 선택. 상대 카드의 뒷면은 절대 참조하지 않는다.
+ * MCCFR 자가학습 정책(균형 근사)이 로드되어 있으면 그것이 본체 —
+ * 미로드/미적중 시 아래 카운팅+베이지안 휴리스틱으로 폴백.
  */
 export function chooseAiAction(s: JPState, me: PlayerId): JPAction {
   if (s.turn !== me || s.phase !== 'act') throw new Error('not AI turn');
+  const policyEntry = lookupPolicy(policyKey(s, me));
+  if (policyEntry) return tokenToAction(s, me, samplePolicyToken(policyEntry));
   const opp = (1 - me) as PlayerId;
   const my = s.cards[me];
   const cap = maxLevel(s, me);
