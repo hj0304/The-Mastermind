@@ -22,7 +22,7 @@ import './quattro.css';
 import '../../net/online.css';
 
 /**
- * 콰트로 온라인 대전 — 호스트 권위 방식.
+ * 테트라 온라인 대전 — 호스트 권위 방식.
  * 상대 손패·가상 플레이어 카드·상대가 교환으로 받은 카드는 뷰에서 마스킹된다(view.ts).
  */
 
@@ -334,7 +334,7 @@ export default function QuattroOnline({ room, onExit }: { room: NetRoom; onExit:
                     <span className="who">{p === me ? '나' : '상대'}</span>
                     {four.map((c) => <CardView key={c.id} card={c} small />)}
                     <span className={`verdict ${isQuattro(four) ? 'ok' : 'fail'}`}>
-                      {isQuattro(four) ? `콰트로 ${cardSum(four)}` : `미완성 ${cardSum(four)}`}
+                      {isQuattro(four) ? `테트라 ${cardSum(four)}` : `미완성 ${cardSum(four)}`}
                     </span>
                   </div>
                 );
@@ -371,7 +371,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
-      <span className="game-title">콰트로 · 온라인</span>
+      <span className="game-title">테트라 · 온라인</span>
     </header>
   );
 }

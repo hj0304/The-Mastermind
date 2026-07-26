@@ -1,5 +1,5 @@
 /**
- * 콰트로 카드 렌더링 — AI 대전(QuattroGame)과 온라인 대전(QuattroOnline)이 공유한다.
+ * 테트라 카드 렌더링 — AI 대전(QuattroGame)과 온라인 대전(QuattroOnline)이 공유한다.
  * 카드 표시는 색·숫자·공개 여부가 곧 규칙이므로 중복 구현하지 않는다.
  */
 

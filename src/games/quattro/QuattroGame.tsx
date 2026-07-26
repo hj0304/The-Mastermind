@@ -153,7 +153,7 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
       <div className="qt-root">
         <GameHeader onExit={onExit} />
         <OnlinePanel
-          gameName="콰트로"
+          gameName="테트라"
           onReady={(room) => setOnline(room)}
           onCancel={() => setOnline(null)}
         />
@@ -180,11 +180,11 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
       <div className="qt-root">
         <GameHeader onExit={onExit} />
         <div className="qt-setup">
-          <h2>콰트로</h2>
+          <h2>테트라</h2>
           <p className="qt-rule-summary">
-            <b>색과 숫자가 모두 다른 4장(콰트로)</b>을 상대보다 높은 합계로 완성하세요. 4색 1~6
+            <b>색과 숫자가 모두 다른 4장(테트라)</b>을 상대보다 높은 합계로 완성하세요. 4색 1~6
             카드와 검정 0 두 장, 총 26장. <b>검정 0도 별개의 색·숫자로 인정</b>되므로 0을 끼워
-            콰트로를 완성할 수 있습니다(대신 합계가 0만큼 손해). 멀리건 2회로 패를 바꿀 수 있고,
+            테트라를 완성할 수 있습니다(대신 합계가 0만큼 손해). 멀리건 2회로 패를 바꿀 수 있고,
             남은 18장을 가진 <b>가상 플레이어 6명 전원과 한 번씩 교환</b>해야 합니다. 내가 준
             카드는 공개되고, 받는 카드는 나만 봅니다. 가상 플레이어는 0 카드가 있으면 무조건 0을
             줍니다 — 조심하세요!
@@ -332,7 +332,7 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
                     <span className="who">{p === HUMAN ? '나' : 'AI'}</span>
                     {four.map((c) => <CardView key={c.id} card={c} small />)}
                     <span className={`verdict ${isQuattro(four) ? 'ok' : 'fail'}`}>
-                      {isQuattro(four) ? `콰트로 ${cardSum(four)}` : `미완성 ${cardSum(four)}`}
+                      {isQuattro(four) ? `테트라 ${cardSum(four)}` : `미완성 ${cardSum(four)}`}
                     </span>
                   </div>
                 );
@@ -354,9 +354,9 @@ function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrend
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
-      <span className="game-title">콰트로</span>
+      <span className="game-title">테트라</span>
       {surrender && <SurrenderButton gameId="quattro" onExit={onExit} />}
-      <RuleBookButton gameId="quattro" gameName="콰트로" className="rb-btn header-rb" />
+      <RuleBookButton gameId="quattro" gameName="테트라" className="rb-btn header-rb" />
     </header>
   );
 }
