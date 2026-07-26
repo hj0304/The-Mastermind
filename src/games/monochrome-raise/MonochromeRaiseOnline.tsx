@@ -12,6 +12,7 @@ import { viewFor } from './view.ts';
 import { TrackRow, tileColor } from './track.tsx';
 import type { NetRoom } from '../../net/room.ts';
 import { makeDataCommitment, verifyDataCommitment } from '../../net/commit.ts';
+import ChatPanel from '../../net/ChatPanel.tsx';
 import './raise.css';
 import '../../net/online.css';
 
@@ -301,6 +302,7 @@ export default function MonochromeRaiseOnline({
             </div>
           </div>
         )}
+        <ChatPanel room={room} />
       </div>
     );
   }
@@ -412,6 +414,7 @@ export default function MonochromeRaiseOnline({
           </div>
         </div>
       )}
+      <ChatPanel room={room} />
     </div>
   );
 }

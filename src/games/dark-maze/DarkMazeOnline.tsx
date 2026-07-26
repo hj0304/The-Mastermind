@@ -14,6 +14,7 @@ import {
 } from './engine.ts';
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import ChatPanel from '../../net/ChatPanel.tsx';
 import './darkmaze.css';
 import '../../net/online.css';
 
@@ -193,6 +194,7 @@ export default function DarkMazeOnline({ room, onExit }: { room: NetRoom; onExit
         <p className="online-wait" style={{ justifyContent: 'center', marginTop: 40 }}>
           <span className="online-spinner" /> 게임 시작을 기다리는 중…
         </p>
+        <ChatPanel room={room} />
       </div>
     );
   }
@@ -367,6 +369,7 @@ export default function DarkMazeOnline({ room, onExit }: { room: NetRoom; onExit
           </div>
         </div>
       )}
+      <ChatPanel room={room} />
     </div>
   );
 }

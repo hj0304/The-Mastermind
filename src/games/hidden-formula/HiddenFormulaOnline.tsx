@@ -17,6 +17,7 @@ import { viewFor } from './view.ts';
 import { AnswerClock, HintList, ProblemBar } from './parts.tsx';
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import ChatPanel from '../../net/ChatPanel.tsx';
 import './hiddenformula.css';
 import '../../net/online.css';
 
@@ -409,6 +410,7 @@ export default function HiddenFormulaOnline({ room, onExit }: { room: NetRoom; o
         <p className="online-wait" style={{ justifyContent: 'center', marginTop: 40 }}>
           <span className="online-spinner" /> 게임 시작을 기다리는 중…
         </p>
+        <ChatPanel room={room} />
       </div>
     );
   }
@@ -574,6 +576,7 @@ export default function HiddenFormulaOnline({ room, onExit }: { room: NetRoom; o
           </div>
         </div>
       )}
+      <ChatPanel room={room} />
     </div>
   );
 }

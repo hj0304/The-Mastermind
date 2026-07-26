@@ -104,6 +104,7 @@ export function openRelayRoom(code: string, isHost: boolean, scope = ''): NetRoo
   const scopedCode = scope ? `${scope}:${code}` : code;
 
   const msgCbs = new Set<(msg: unknown) => void>();
+  const chatCbs = new Set<(text: string) => void>();
   const peerCbs = new Set<(count: number) => void>();
   /** url → 현재 소켓 (재연결 시 교체) */
   const sockets = new Map<string, WebSocket>();
@@ -180,6 +181,13 @@ export function openRelayRoom(code: string, isHost: boolean, scope = ''): NetRoo
   };
 
   const deliver = (d: unknown) => {
+    // 채팅 사이드채널 — 게임 메시지와 같은 순서 보장·재전송 파이프라인을 타되,
+    // 게임 핸들러 대신 채팅 콜백으로 배달한다 (게임별 프로토콜과 완전 분리)
+    const chat = (d as { __mmChat?: unknown } | null)?.__mmChat;
+    if (typeof chat === 'string') {
+      for (const cb of chatCbs) cb(chat);
+      return;
+    }
     for (const cb of msgCbs) cb(d);
   };
 
@@ -399,6 +407,13 @@ export function openRelayRoom(code: string, isHost: boolean, scope = ''): NetRoo
     onMsg: (cb) => {
       msgCbs.add(cb);
       return () => msgCbs.delete(cb);
+    },
+    sendChat: (text) => {
+      void publish({ from: selfId, t: 'msg', d: { __mmChat: text }, n: ++seqOut });
+    },
+    onChat: (cb) => {
+      chatCbs.add(cb);
+      return () => chatCbs.delete(cb);
     },
     onPeers: (cb) => {
       peerCbs.add(cb);

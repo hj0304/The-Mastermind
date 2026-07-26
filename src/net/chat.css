@@ -1,0 +1,135 @@
+/* 온라인 대전 채팅 — ChatPanel.tsx */
+
+.chat-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 55;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--border, rgba(140, 160, 190, 0.3));
+  background: var(--bg-card, rgba(20, 26, 38, 0.92));
+  font-size: 20px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.chat-fab:hover { border-color: var(--accent, #ffd166); }
+
+.chat-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #d65454;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+.chat-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 72px;
+  z-index: 55;
+  width: min(320px, calc(100vw - 32px));
+  height: 320px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  border: 1px solid var(--border, rgba(140, 160, 190, 0.3));
+  background: var(--bg-card, rgba(16, 21, 32, 0.97));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: chat-rise 0.18s ease;
+}
+@keyframes chat-rise {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border, rgba(140, 160, 190, 0.2));
+}
+.chat-close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim, #9aa8c0);
+}
+.chat-close:hover { color: var(--text, #e8eef8); }
+
+.chat-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+}
+.chat-empty {
+  margin: auto;
+  font-size: 12px;
+  color: var(--text-dim, #77839c);
+}
+.chat-msg {
+  max-width: 78%;
+  padding: 7px 11px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.chat-msg.mine {
+  align-self: flex-end;
+  background: var(--accent, #ffd166);
+  color: #1a1408;
+  border-bottom-right-radius: 4px;
+}
+.chat-msg.theirs {
+  align-self: flex-start;
+  background: rgba(140, 160, 190, 0.16);
+  color: var(--text, #e8eef8);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--border, rgba(140, 160, 190, 0.2));
+}
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border, rgba(140, 160, 190, 0.25));
+  background: rgba(10, 14, 22, 0.6);
+  color: var(--text, #e8eef8);
+  font-size: 13px;
+}
+.chat-input:focus { border-color: var(--accent, #ffd166); outline: none; }
+.chat-send {
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid var(--accent, #ffd166);
+  background: transparent;
+  color: var(--accent, #ffd166);
+  font-size: 13px;
+  font-weight: 700;
+}
+.chat-send:hover { background: rgba(255, 209, 102, 0.12); }

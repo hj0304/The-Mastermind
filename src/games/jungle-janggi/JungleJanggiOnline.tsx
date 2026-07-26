@@ -3,6 +3,7 @@ import type { JState, Move, PieceType, PlayerId } from './engine.ts';
 import { COLS, ROWS, applyMove, createGame, idx, legalMoves } from './engine.ts';
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import ChatPanel from '../../net/ChatPanel.tsx';
 import './jungle.css';
 import '../../net/online.css';
 
@@ -142,6 +143,7 @@ export default function JungleJanggiOnline({ room, onExit }: { room: NetRoom; on
         <p className="online-wait" style={{ justifyContent: 'center', marginTop: 40 }}>
           <span className="online-spinner" /> 게임 시작을 기다리는 중…
         </p>
+        <ChatPanel room={room} />
       </div>
     );
   }
@@ -272,6 +274,7 @@ export default function JungleJanggiOnline({ room, onExit }: { room: NetRoom; on
           </div>
         </div>
       )}
+      <ChatPanel room={room} />
     </div>
   );
 }
