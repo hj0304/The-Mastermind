@@ -1,21 +1,24 @@
 /**
- * 베팅 테이블 — 1v1 베팅류 게임 공용 듀얼 레인 레이아웃.
+ * 베팅 테이블 — 1v1 베팅류 게임 공용 레이아웃 (A안: 테이블 연출).
  *
- * 상대 좌석 → 상대 베팅 레인 → 총 팟 → 내 베팅 레인 → 내 좌석을 수직 축 하나로
- * 정렬해 위에서 아래로 한 번 훑으면 판이 읽히게 한다. 화면에서 빛나는 것은
- * 총 팟 하나뿐 — 나머지는 무채색으로 눌러 위계를 만든다.
- * 렌더 전용: 엔진 상태는 게임 쪽에서 props로 내려준다.
+ * 좌측 테이블 컬럼은 상대 좌석 패널 → 상대 베팅 → 프레임 팟 → 내 베팅 → 내 좌석 패널의
+ * 수직 축 하나로 정렬되고, 데스크톱(≥880px)에서는 우측에 정보 레일이 붙는다.
+ * 화면에서 링을 두르고 빛나는 것은 총 팟 프레임 하나뿐이다.
+ * 렌더 전용: 엔진 상태·레일 내용·독 내용은 게임 쪽에서 내려준다.
  */
 
 import type { ReactNode } from 'react';
+import NumberStepper from './NumberStepper.tsx';
 import './betting.css';
 
 export interface SeatInfo {
   name: string;
-  /** 좌석 옆 뱃지 (예: EXTREME) */
+  /** 좌석 옆 고정 뱃지 (예: EXTREME) */
   tag?: string;
   /** 남은 칩 */
   stack: number;
+  /** 상태 뱃지 (ACTIVE / RAISED / CALLED …) — 없으면 미표시 */
+  badge?: string | null;
 }
 
 /** 칩 금액을 액면(10·5·1)으로 분해 — 스택 높이가 항상 금액에 비례한다 */
@@ -41,15 +44,15 @@ function decompose(amount: number): number[] {
 export function ChipStack({ amount }: { amount: number }) {
   const discs = decompose(amount);
   return (
-    <div className="bt-chips" style={{ height: Math.max(18, discs.length * 6 + 12) }} aria-hidden="true">
+    <div className="bt-chips" style={{ height: Math.max(20, discs.length * 7 + 13) }} aria-hidden="true">
       {discs.map((d, i) => (
-        <span key={i} className={`bt-chip d${d}`} style={{ bottom: i * 6 }} />
+        <span key={i} className={`bt-chip d${d}`} style={{ bottom: i * 7 }} />
       ))}
     </div>
   );
 }
 
-function SeatRow({ seat, side, card }: { seat: SeatInfo; side: 'opp' | 'me'; card?: ReactNode }) {
+function SeatPanel({ seat, side, card }: { seat: SeatInfo; side: 'opp' | 'me'; card?: ReactNode }) {
   return (
     <div className={`bt-seat ${side}`}>
       <div className="bt-who">
@@ -58,6 +61,7 @@ function SeatRow({ seat, side, card }: { seat: SeatInfo; side: 'opp' | 'me'; car
           <div className="bt-name">
             {seat.name}
             {seat.tag && <span className="bt-tag">{seat.tag}</span>}
+            {seat.badge && <span className={`bt-state ${seat.badge.toLowerCase()}`}>{seat.badge}</span>}
           </div>
           <div className="bt-stack">
             보유 <b>{seat.stack}</b>칩
@@ -69,6 +73,18 @@ function SeatRow({ seat, side, card }: { seat: SeatInfo; side: 'opp' | 'me'; car
   );
 }
 
+function BetLane({ label, amount }: { label: string; amount: number }) {
+  return (
+    <div className="bt-lane">
+      <ChipStack amount={amount} />
+      <div className="bt-lane-info">
+        <span className="bt-lane-label">{label}</span>
+        <span className="bt-lane-amt">{amount}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function BettingTable(p: {
   opp: SeatInfo;
   me: SeatInfo;
@@ -76,89 +92,81 @@ export default function BettingTable(p: {
   myBet: number;
   pot: number;
   handNo?: number;
-  carried?: number;
+  /** 팟 프레임 하단 보조 설명 (예: 본 라운드 4 · 이월 +2) */
+  potSub?: string;
   /** 좌석 우측 카드 슬롯 (라벨 포함해 게임 쪽에서 구성) */
   oppCard?: ReactNode;
   myCard?: ReactNode;
+  /** 우측 정보 레일 (데스크톱) / 테이블 아래 (모바일) */
+  rail?: ReactNode;
+  /** 하단 액션 독 — 모바일에서 화면 하단에 고정 */
+  dock?: ReactNode;
 }) {
   return (
-    <div className="bt-wrap">
-      <SeatRow seat={p.opp} side="opp" card={p.oppCard} />
-      <div className="bt-lane">
-        <div className="bt-lane-info">
-          <span className="bt-lane-label">{p.opp.name} 베팅</span>
-          <span className="bt-lane-amt">{p.oppBet}</span>
+    <div className="bt-layout">
+      <div className="bt-main">
+        <SeatPanel seat={p.opp} side="opp" card={p.oppCard} />
+        <BetLane label={`${p.opp.name} 베팅`} amount={p.oppBet} />
+        <div className="bt-pot-frame">
+          <div className="bt-pot-head">
+            <span className="bt-pot-label">총 팟</span>
+            {p.handNo !== undefined && <span className="bt-badge">핸드 #{p.handNo}</span>}
+          </div>
+          <div className="bt-pot-amt">{p.pot}</div>
+          {p.potSub && <div className="bt-pot-sub">{p.potSub}</div>}
         </div>
-        <ChipStack amount={p.oppBet} />
+        <BetLane label="내 베팅" amount={p.myBet} />
+        <SeatPanel seat={p.me} side="me" card={p.myCard} />
       </div>
-      <div className="bt-pot">
-        <div className="bt-pot-label">총 팟</div>
-        <div className="bt-pot-amt">{p.pot}</div>
-        <div className="bt-pot-badges">
-          {p.handNo !== undefined && <span className="bt-badge">핸드 #{p.handNo}</span>}
-          {(p.carried ?? 0) > 0 && <span className="bt-badge carried">이월 +{p.carried}</span>}
-        </div>
-      </div>
-      <div className="bt-lane">
-        <ChipStack amount={p.myBet} />
-        <div className="bt-lane-info right">
-          <span className="bt-lane-label">내 베팅</span>
-          <span className="bt-lane-amt">{p.myBet}</span>
-        </div>
-      </div>
-      <SeatRow seat={p.me} side="me" card={p.myCard} />
+      {p.rail && <aside className="bt-rail">{p.rail}</aside>}
+      {p.dock && <div className="bt-dock">{p.dock}</div>}
     </div>
   );
 }
 
-/** 하단 고정 액션 독 — 엄지 도달 영역에 조작을 모은다 */
-export function ActionDock({ children }: { children: ReactNode }) {
-  return <div className="bt-dock">{children}</div>;
-}
-
-/** 레이즈 프리셋 — 스텝퍼 값을 설정한다 (즉시 베팅하지 않음) */
-export function BetPresets({
-  presets,
+/**
+ * 칩 트레이 — 실물 칩을 집어 미는 동작의 디지털 번역.
+ * 액면 칩을 탭해 레이즈 총액을 쌓아 올리고, 숫자 직접 입력을 병행한다.
+ */
+export function ChipTray({
   value,
-  onPick,
+  min = 1,
+  max,
+  onChange,
+  onEnter,
 }: {
-  presets: { label: string; value: number }[];
   value: number;
-  onPick: (v: number) => void;
+  min?: number;
+  max: number;
+  onChange: (v: number) => void;
+  onEnter?: () => void;
 }) {
+  const add = (d: number) => onChange(Math.min(max, value + d));
   return (
-    <div className="bt-presets">
-      {presets.map((pr) => (
-        <button
-          key={pr.label}
-          className={`bt-preset ${pr.value === value ? 'on' : ''}`}
-          onClick={() => onPick(pr.value)}
-        >
-          {pr.label}
+    <div className="bt-tray">
+      <div className="bt-tray-chips">
+        {[1, 5, 10].map((d) => (
+          <button
+            key={d}
+            className={`bt-tray-chip d${d}`}
+            disabled={value >= max}
+            onClick={() => add(d)}
+            aria-label={`칩 ${d} 추가`}
+          >
+            +{d}
+          </button>
+        ))}
+        <button className="bt-tray-pill" onClick={() => onChange(min)}>
+          초기화
         </button>
-      ))}
+        <button className="bt-tray-pill allin" onClick={() => onChange(max)}>
+          올인
+        </button>
+      </div>
+      <div className="bt-tray-total">
+        <span className="bt-tray-label">레이즈 총액</span>
+        <NumberStepper value={value} min={min} max={max} onChange={onChange} onEnter={onEnter} />
+      </div>
     </div>
   );
-}
-
-/** 고정 사다리 + 팟 비율 프리셋 목록 (라벨에 실제 칩 수를 함께 노출) */
-export function raisePresets(pot: number, maxRaise: number): { label: string; value: number }[] {
-  const half = Math.min(maxRaise, Math.max(1, Math.ceil(pot / 2)));
-  const full = Math.min(maxRaise, Math.max(1, pot));
-  const cands = [
-    { label: '+1', value: 1 },
-    { label: '+3', value: 3 },
-    { label: '+5', value: 5 },
-    { label: `½팟 ${half}`, value: half },
-    { label: `팟 ${full}`, value: full },
-    { label: `올인 ${maxRaise}`, value: maxRaise },
-  ];
-  const seen = new Set<number>();
-  const out: { label: string; value: number }[] = [];
-  for (const c of cands) {
-    if (c.value < 1 || c.value > maxRaise || seen.has(c.value)) continue;
-    seen.add(c.value);
-    out.push(c);
-  }
-  return out;
 }
