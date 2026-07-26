@@ -7,6 +7,10 @@
   gap: 14px;
   min-height: 100dvh;
 }
+/* 플레이 화면: 데스크톱에서 좌 테이블 + 우 정보 레일 2단 */
+.bp-root.bp-wide {
+  max-width: 960px;
+}
 
 /* 설정 화면 */
 .bp-setup {
@@ -62,8 +66,7 @@
 .reveal { display: flex; align-items: center; gap: 14px; }
 .result-text { font-size: 14px; text-align: center; }
 
-/* 카운팅 보조 */
-.bp-seen .label { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+/* 카운팅 보조 (정보 레일 안) */
 .seen-grid { display: flex; gap: 4px; flex-wrap: wrap; }
 .seen-cell {
   width: 44px;

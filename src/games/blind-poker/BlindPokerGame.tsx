@@ -17,8 +17,9 @@ import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { SurrenderButton } from '../shared/Surrender.tsx';
 import BlindPokerOnline from './BlindPokerOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
-import NumberStepper from '../shared/NumberStepper.tsx';
-import BettingTable, { ActionDock, BetPresets, raisePresets } from '../shared/BettingTable.tsx';
+import BettingTable, { ChipTray } from '../shared/BettingTable.tsx';
+import { accumulateTendency, emptyTendency, seatBadge, TendencyPanel } from './insight.tsx';
+import type { Tendency } from './insight.tsx';
 import type { NetRoom } from '../../net/room.ts';
 import './blindpoker.css';
 
@@ -35,6 +36,7 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
   const [state, setState] = useState<BpState | null>(null);
   const [aiThinking, setAiThinking] = useState(false);
   const [raiseAmt, setRaiseAmt] = useState(1);
+  const [tend, setTend] = useState<Tendency>(emptyTendency);
   const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recordedHands = useRef(0);
   const gameRecorded = useRef(false);
@@ -55,6 +57,7 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
     setState(createGame(first));
     recordedHands.current = 0;
     gameRecorded.current = false;
+    setTend(emptyTendency());
     setPhase('playing');
   }
 
@@ -78,6 +81,11 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
     if (!state) return;
     if (state.phase === 'result' && state.history.length > recordedHands.current) {
       recordedHands.current = state.history.length;
+      setTend((t) => {
+        const next = { ...t };
+        accumulateTendency(next, state, AI);
+        return next;
+      });
       const h = state.history[state.history.length - 1];
       const humanRevealed =
         h.outcome !== 'fold' || h.folder === HUMAN ? h.cards[HUMAN] : h.cards[HUMAN];
@@ -173,19 +181,136 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
   const seenCount = new Array<number>(11).fill(0);
   for (const c of seen) seenCount[c] += 1;
 
+  const amt = info ? Math.min(raiseAmt, info.maxRaise) : 1;
+
+  const rail = (
+    <>
+      <div className="bt-rail-sec">
+        <div className="bt-rail-title">카드 카운팅</div>
+        <div className="seen-grid">
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+            <div key={n} className={`seen-cell c${seenCount[n]}`}>
+              <span className="num">{n}</span>
+              <span className="cnt">{2 - seenCount[n]}</span>
+            </div>
+          ))}
+        </div>
+        <p className="bt-rail-note">
+          이번 덱에서 확인한 카드 — 남은 {20 - seen.length}장 + 내 이마. 흐린 칸은 소진된 숫자,
+          20장 소진 시 새 덱으로 리셋됩니다.
+        </p>
+      </div>
+      <div className="bt-rail-sec">
+        <div className="bt-rail-title">상대 성향</div>
+        <TendencyPanel t={tend} />
+      </div>
+      <div className="bt-rail-sec">
+        <div className="bt-rail-title">핸드 로그</div>
+        {state.history.length === 0 && <p className="bt-rail-note">아직 기록이 없습니다</p>}
+        <div className="bp-history">
+          {state.history.slice(-6).map((h, i) => {
+            const idx = state.history.length - Math.min(6, state.history.length) + i;
+            const myCardKnown = h.outcome !== 'fold' || h.folder === HUMAN;
+            return (
+              <div
+                key={idx}
+                className={`hist-row ${h.winner === HUMAN ? 'win' : h.winner === AI ? 'lose' : 'draw'}`}
+              >
+                <span className="hist-no">#{idx + 1}</span>
+                <span>나 {myCardKnown ? h.cards[HUMAN] : '?'}</span>
+                <span>AI {h.cards[AI]}</span>
+                <span className="hist-outcome">
+                  {h.outcome === 'draw'
+                    ? '무승부(이월)'
+                    : h.outcome === 'fold'
+                      ? `${h.folder === HUMAN ? '나' : 'AI'} 폴드${h.penalty ? ' ⚠10페널티' : ''}`
+                      : '쇼다운'}
+                </span>
+                <span className="hist-pot">
+                  {h.winner !== undefined ? `${h.winner === HUMAN ? '+' : '-'}${h.potWon}` : ''}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="bt-rail-sec warn">
+        <div className="bt-rail-title">폴드 페널티</div>
+        <p className="bt-rail-note">
+          10을 들고 폴드하면 칩 10개를 추가로 잃습니다. 내 카드는 볼 수 없습니다 — 콜/폴드
+          판단에 참고하세요.
+        </p>
+      </div>
+    </>
+  );
+
+  const dock =
+    state.phase === 'betting' || state.phase === 'result' ? (
+      <>
+        {state.phase === 'betting' && state.toAct === AI && (
+          <div className="bt-thinking">AI가 고민 중…</div>
+        )}
+        {state.phase === 'betting' && myTurn && info && (
+          <>
+            <div className="bt-situation">
+              {info.callCost > 0
+                ? `AI가 레이즈했습니다 — 콜하려면 +${info.callCost}`
+                : '베팅이 같습니다 — 콜하면 즉시 공개'}
+            </div>
+            {info.maxRaise >= 1 && (
+              <ChipTray
+                value={amt}
+                max={info.maxRaise}
+                onChange={setRaiseAmt}
+                onEnter={() => humanAct({ type: 'raise', amount: amt })}
+              />
+            )}
+            <div className="bt-row">
+              <button className="bt-btn fold" onClick={() => humanAct({ type: 'fold' })}>
+                폴드<small>10을 들고 폴드하면 −10</small>
+              </button>
+              <button className="bt-btn call" onClick={() => humanAct({ type: 'call' })}>
+                {info.callCost > 0 ? `콜 +${info.callCost}` : '콜 (공개)'}
+              </button>
+              {info.maxRaise >= 1 && (
+                <button
+                  className="bt-btn raise"
+                  onClick={() => humanAct({ type: 'raise', amount: amt })}
+                >
+                  {amt === info.maxRaise ? `올인 +${amt}` : `레이즈 +${amt}`}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+        {state.phase === 'result' && lastHand && (
+          <div className="bt-result">
+            <HandResultView hand={lastHand} />
+            <button className="primary-btn" onClick={proceedNextHand}>
+              다음 핸드
+            </button>
+          </div>
+        )}
+      </>
+    ) : undefined;
+
   return (
-    <div className="bp-root">
+    <div className="bp-root bp-wide">
       <GameHeader onExit={onExit} surrender={phase === 'playing' && state.phase !== 'gameover'} />
 
-      {/* 듀얼 레인 테이블: 상대 → 상대 베팅 → 팟 → 내 베팅 → 나 */}
+      {/* A안 테이블: 좌석 패널 → 베팅 레인 → 프레임 팟 축 + 우측 정보 레일 + 액션 독 */}
       <BettingTable
-        opp={{ name: 'AI', tag: 'EXTREME', stack: state.stacks[AI] }}
-        me={{ name: '나', stack: state.stacks[HUMAN] }}
+        opp={{ name: 'AI', tag: 'EXTREME', stack: state.stacks[AI], badge: seatBadge(state, AI) }}
+        me={{ name: '나', stack: state.stacks[HUMAN], badge: seatBadge(state, HUMAN) }}
         oppBet={state.invested[AI]}
         myBet={state.invested[HUMAN]}
         pot={state.phase === 'betting' ? potSize(state) : lastHand?.potWon ?? 0}
         handNo={state.handNo}
-        carried={state.carried}
+        potSub={
+          state.phase === 'betting'
+            ? `본 라운드 ${state.invested[HUMAN] + state.invested[AI]}${state.carried > 0 ? ` · 이월 +${state.carried}` : ''}`
+            : undefined
+        }
         oppCard={
           <div className="card-slot">
             <div className="slot-label">AI의 이마</div>
@@ -198,103 +323,9 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
             <div className="pcard hidden-card small">?</div>
           </div>
         }
+        rail={rail}
+        dock={dock}
       />
-
-      {/* 카운팅 보조: 내가 본 카드 */}
-      <div className="bp-seen">
-        <div className="label">이번 덱에서 확인한 카드 (남은 {20 - seen.length}장 + 내 이마)</div>
-        <div className="seen-grid">
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <div key={n} className={`seen-cell c${seenCount[n]}`}>
-              <span className="num">{n}</span>
-              <span className="cnt">{2 - seenCount[n]}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 핸드 히스토리 */}
-      <div className="bp-history">
-        {state.history.slice(-6).map((h, i) => {
-          const idx = state.history.length - Math.min(6, state.history.length) + i;
-          const myCardKnown = h.outcome !== 'fold' || h.folder === HUMAN;
-          return (
-            <div
-              key={idx}
-              className={`hist-row ${h.winner === HUMAN ? 'win' : h.winner === AI ? 'lose' : 'draw'}`}
-            >
-              <span className="hist-no">#{idx + 1}</span>
-              <span>나 {myCardKnown ? h.cards[HUMAN] : '?'}</span>
-              <span>AI {h.cards[AI]}</span>
-              <span className="hist-outcome">
-                {h.outcome === 'draw'
-                  ? '무승부(이월)'
-                  : h.outcome === 'fold'
-                    ? `${h.folder === HUMAN ? '나' : 'AI'} 폴드${h.penalty ? ' ⚠10페널티' : ''}`
-                    : '쇼다운'}
-              </span>
-              <span className="hist-pot">
-                {h.winner !== undefined ? `${h.winner === HUMAN ? '+' : '-'}${h.potWon}` : ''}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 액션 독 — 하단 고정 (베팅 조작 · AI 대기 · 핸드 결과) */}
-      {(state.phase === 'betting' || state.phase === 'result') && (
-        <ActionDock>
-          {state.phase === 'betting' && state.toAct === AI && (
-            <div className="bt-thinking">AI가 고민 중…</div>
-          )}
-          {state.phase === 'betting' && myTurn && info && (
-            <>
-              {info.maxRaise >= 1 && (
-                <>
-                  <BetPresets
-                    presets={raisePresets(potSize(state), info.maxRaise)}
-                    value={Math.min(raiseAmt, info.maxRaise)}
-                    onPick={setRaiseAmt}
-                  />
-                  <div className="bt-row">
-                    <NumberStepper
-                      value={Math.min(raiseAmt, info.maxRaise)}
-                      min={1}
-                      max={info.maxRaise}
-                      onChange={setRaiseAmt}
-                      onEnter={() => humanAct({ type: 'raise', amount: Math.min(raiseAmt, info.maxRaise) })}
-                    />
-                    <button
-                      className="bt-btn raise"
-                      onClick={() => humanAct({ type: 'raise', amount: Math.min(raiseAmt, info.maxRaise) })}
-                    >
-                      {Math.min(raiseAmt, info.maxRaise) === info.maxRaise
-                        ? `올인 +${info.maxRaise}`
-                        : `레이즈 +${Math.min(raiseAmt, info.maxRaise)}`}
-                    </button>
-                  </div>
-                </>
-              )}
-              <div className="bt-row">
-                <button className="bt-btn fold" onClick={() => humanAct({ type: 'fold' })}>
-                  폴드<small>10을 들고 폴드하면 −10</small>
-                </button>
-                <button className="bt-btn call" onClick={() => humanAct({ type: 'call' })}>
-                  {info.callCost > 0 ? `콜 +${info.callCost}` : '콜 (공개)'}
-                </button>
-              </div>
-            </>
-          )}
-          {state.phase === 'result' && lastHand && (
-            <div className="bt-result">
-              <HandResultView hand={lastHand} />
-              <button className="primary-btn" onClick={proceedNextHand}>
-                다음 핸드
-              </button>
-            </div>
-          )}
-        </ActionDock>
-      )}
 
       {phase === 'done' && (
         <div className="bp-overlay">
