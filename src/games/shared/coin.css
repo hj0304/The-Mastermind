@@ -187,33 +187,60 @@
   100% { transform: translateY(56px) rotateY(0deg) rotateZ(0deg) scale(1); }
 }
 
-/* 착지 순간 반짝 (최종 포즈는 fill-forwards가 유지) */
-.coin3d.done .coin-face { animation: coin-glint 0.45s ease-out; }
+/* ---- 3막: 누운 동전을 들어올려 면을 보여준다 ----
+   착지 0.95초 뒤 rise 클래스가 붙는다. 겉은 바닥(56px)에서 위(-30px)로 떠오르며
+   커지고, 속은 누운 각도(75°/255°)에서 카메라 정면(0°/180°)으로 일어선다.
+   시작 키프레임을 착지 최종 포즈와 정확히 일치시켜 이어지게 한다 */
+/* 0.55초 딜레이 = 바닥에 누운 채 잠시 멈추는 시간 (backwards로 착지 포즈 유지) */
+.coin3d.flip.rise { animation: coin-lift 0.9s cubic-bezier(0.22, 1.1, 0.36, 1) 0.55s both; }
+@keyframes coin-lift {
+  0% { transform: translateY(56px) rotateY(0deg) rotateZ(0deg) scale(1); }
+  100% { transform: translateY(-30px) rotateY(0deg) rotateZ(0deg) scale(1.22); }
+}
+.coin3d.rise .coin-spin.to-heads { animation: coin-stand-heads 0.9s cubic-bezier(0.22, 1.1, 0.36, 1) 0.55s both; }
+.coin3d.rise .coin-spin.to-tails { animation: coin-stand-tails 0.9s cubic-bezier(0.22, 1.1, 0.36, 1) 0.55s both; }
+@keyframes coin-stand-heads {
+  0% { transform: rotateX(75deg); }
+  100% { transform: rotateX(0deg); }
+}
+@keyframes coin-stand-tails {
+  0% { transform: rotateX(255deg); }
+  100% { transform: rotateX(180deg); }
+}
+
+/* 들어올리면 그림자는 아래에 남아 작아진다 */
+.coin-shadow.lifted { animation: coin-shadow-lift 0.9s cubic-bezier(0.22, 1.1, 0.36, 1) 0.55s both; }
+@keyframes coin-shadow-lift {
+  0% { transform: scale(1.05); opacity: 0.6; filter: blur(1px); }
+  100% { transform: scale(0.55); opacity: 0.22; filter: blur(4px); }
+}
+
+/* 면을 보여주는 순간 반짝 */
+.coin3d.rise .coin-face { animation: coin-glint 0.5s ease-out 1.15s backwards; }
 @keyframes coin-glint {
   0% { filter: brightness(1.7); }
   100% { filter: brightness(1); }
 }
 
-/* ---- 판정 배지 — 누운 동전 위로 떠오른다 ---- */
+/* ---- 판정 문구 — 들어올려진 동전 아래(바닥 쪽)에 ---- */
 .coin-verdict {
   position: absolute;
-  top: 18px;
+  bottom: 4px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 10px 18px;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 16px;
   border-radius: 12px;
   background: rgba(14, 18, 28, 0.88);
   border: 1px solid rgba(255, 209, 102, 0.45);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 209, 102, 0.12);
   white-space: nowrap;
-  animation: coin-verdict-rise 0.5s cubic-bezier(0.2, 1.2, 0.4, 1);
+  animation: coin-verdict-in 0.4s cubic-bezier(0.2, 1.2, 0.4, 1);
 }
 .coin-verdict b {
-  font-size: 1.3rem;
+  font-size: 1.15rem;
   color: #ffd166;
   letter-spacing: 0.06em;
 }
@@ -221,8 +248,8 @@
   font-size: 0.85rem;
   color: #e8eef8;
 }
-@keyframes coin-verdict-rise {
-  0% { transform: translateX(-50%) translateY(34px) scale(0.7); opacity: 0; }
+@keyframes coin-verdict-in {
+  0% { transform: translateX(-50%) translateY(10px) scale(0.8); opacity: 0; }
   100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
 }
 
