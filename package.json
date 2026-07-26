@@ -16,7 +16,8 @@
     "cfr:train:raise": "esbuild scripts/cfr/train-monochrome-raise.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/train-raise.mjs && node scripts/cfr/.out/train-raise.mjs",
     "cfr:eval:raise": "esbuild scripts/cfr/eval-monochrome-raise.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval-raise.mjs && node scripts/cfr/.out/eval-raise.mjs",
     "cfr:train:janus": "esbuild scripts/cfr/train-janus.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/train-janus.mjs && node scripts/cfr/.out/train-janus.mjs",
-    "cfr:eval:janus": "esbuild scripts/cfr/eval-janus.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval-janus.mjs && node scripts/cfr/.out/eval-janus.mjs"
+    "cfr:eval:janus": "esbuild scripts/cfr/eval-janus.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval-janus.mjs && node scripts/cfr/.out/eval-janus.mjs",
+    "rules:audit": "esbuild scripts/rules/audit-hidden-formula.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/rules-audit.mjs && node scripts/cfr/.out/rules-audit.mjs"
   },
   "dependencies": {
     "nostr-tools": "^2.23.12",
