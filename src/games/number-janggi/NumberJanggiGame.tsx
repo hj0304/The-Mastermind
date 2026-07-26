@@ -162,7 +162,7 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
       <div className="nj-root">
         <GameHeader onExit={onExit} />
         <OnlinePanel
-          gameName="수(數)의 진"
+          gameName="암수전(暗數戰)"
           onReady={(room) => setOnline(room)}
           onCancel={() => setOnline(null)}
         />
@@ -189,7 +189,7 @@ export default function NumberJanggiGame({ onExit }: { onExit: () => void }) {
       <div className="nj-root">
         <GameHeader onExit={onExit} />
         <div className="nj-setup">
-          <h2>수(數)의 진</h2>
+          <h2>암수전(暗數戰)</h2>
           <p className="nj-rule-summary">
             숫자 1~10, 지뢰 3, 왕 1을 자기 진영에 <b>비공개로</b> 배치합니다. 이동 후 적과
             맞닿으면 즉시 대결 — <b>두 수의 합이 10 이상이면 큰 수가, 미만이면 작은 수가
@@ -359,9 +359,9 @@ function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrend
       <button className="back-btn" onClick={onExit}>
         ← 로비
       </button>
-      <span className="game-title">수(數)의 진</span>
+      <span className="game-title">암수전(暗數戰)</span>
       {surrender && <SurrenderButton gameId="number-janggi" onExit={onExit} />}
-      <RuleBookButton gameId="number-janggi" gameName="수(數)의 진" className="rb-btn header-rb" />
+      <RuleBookButton gameId="number-janggi" gameName="암수전(暗數戰)" className="rb-btn header-rb" />
     </header>
   );
 }

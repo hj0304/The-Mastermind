@@ -21,7 +21,7 @@ import './numberjanggi.css';
 import '../../net/online.css';
 
 /**
- * 수의 진 온라인 대전 — 호스트 권위 방식.
+ * 암수전 온라인 대전 — 호스트 권위 방식.
  *
  * 배치 단계가 있어 흐름이 두 층이다: 양쪽이 각자 진영에 기물을 배치해 호스트에게
  * 보내고, 둘 다 준비되면 호스트가 대국을 시작한다. 이후에는 상대 기물의 정체를
@@ -396,7 +396,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
-      <span className="game-title">수(數)의 진 · 온라인</span>
+      <span className="game-title">암수전(暗數戰) · 온라인</span>
     </header>
   );
 }

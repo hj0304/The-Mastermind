@@ -1,5 +1,5 @@
 /**
- * 콰트로 AI — 공개 정보 기반 가상 플레이어 손패 추적 + 교환 기대값 평가.
+ * 테트라 AI — 공개 정보 기반 가상 플레이어 손패 추적 + 교환 기대값 평가.
  *
  * AI가 사용하는 정보 (사람과 동일):
  * - 자기 손패/오픈, 상대 오픈, 모든 플레이어가 건넨 카드(공개), 자기가 받은 카드
@@ -38,7 +38,7 @@ function largestCompatibleSubset(cards: QCard[]): number {
   return best;
 }
 
-/** 최종 4장 후보 평가: 콰트로 여부 > 양립 부분집합 크기 > 합계 */
+/** 최종 4장 후보 평가: 테트라 여부 > 양립 부분집합 크기 > 합계 */
 export function evalFour(cards: QCard[]): number {
   const sum = cardSum(cards);
   if (isQuattro(cards)) return 1000 + sum * 10;
@@ -142,11 +142,11 @@ export function aiWantsMulligan(hand: QCard[]): boolean {
   return isQuattro(hand) ? false : cardSum(hand) < 12;
 }
 
-/** 오픈할 카드: 목표 콰트로에 포함되는 카드 중 가장 높은 숫자 (0은 최후순위) */
+/** 오픈할 카드: 목표 테트라에 포함되는 카드 중 가장 높은 숫자 (0은 최후순위) */
 export function aiChooseOpen(s: QState, me: PlayerId): number {
   const hand = s.hands[me];
   const opens = s.opens[me];
-  // 오픈과 양립하며 손패에서 함께 콰트로를 노릴 수 있는 최선 조합 탐색
+  // 오픈과 양립하며 손패에서 함께 테트라를 노릴 수 있는 최선 조합 탐색
   let bestCombo: QCard[] = [];
   let bestScore = -Infinity;
   for (let mask = 1; mask < 1 << hand.length; mask++) {

@@ -1,5 +1,5 @@
 /**
- * 콰트로 (원작: 콰트로 시즌4 ver.) 게임 엔진 — 순수 로직, UI 무관.
+ * 테트라 (원작: 콰트로 시즌4 ver.) 게임 엔진 — 순수 로직, UI 무관.
  * 룰 상세: docs/GAME_RULES.md §2
  *
  * 핵심 구조:
@@ -183,7 +183,7 @@ export function currentActor(s: QState): PlayerId {
 
 /**
  * 가상 플레이어의 응답 카드 선택 (교환 규칙):
- * ① 0 카드 보유 시 무조건 0 ② 교환자의 오픈과 양립하는 콰트로 최적(최고 숫자) 카드
+ * ① 0 카드 보유 시 무조건 0 ② 교환자의 오픈과 양립하는 테트라 최적(최고 숫자) 카드
  * ③ 없으면 최고 숫자 ④ 동수면 빨>파>노>초
  */
 export function virtualResponse(virtualHand: QCard[], exchangerOpens: QCard[]): QCard {
@@ -285,7 +285,7 @@ function finishGame(s: QState): QState {
   let detail: string;
   if (quat[0] !== quat[1]) {
     winner = quat[0] ? 0 : 1;
-    detail = '콰트로 완성 대 미완성';
+    detail = '테트라 완성 대 미완성';
   } else {
     if (sums[0] !== sums[1]) {
       winner = sums[0] > sums[1] ? 0 : 1;
