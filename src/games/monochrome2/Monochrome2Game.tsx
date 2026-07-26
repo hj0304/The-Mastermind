@@ -141,7 +141,7 @@ export default function Monochrome2Game({ onExit }: { onExit: () => void }) {
             <span className="record-line">
               통산 전적 <b>{rec.wins}승 {rec.losses}패</b>
             </span>
-            <span className="memory-line">AI는 게이지와 승패에서 당신의 잔여 포인트 구간을 계산합니다</span>
+            <span className="memory-line">AI는 게이지와 승패로 당신의 잔여 포인트 구간을 좁히고, 그 위에서 자가대국 학습 균형 전략으로 입찰합니다</span>
           </div>
           <button className="primary-btn" onClick={startGame}>AI 대전 시작</button>
           <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>

@@ -9,7 +9,7 @@ import {
   potSize,
   seenCards,
 } from './engine.ts';
-import { chooseAiAction, loadOpponentModel, recordGameEnd, recordHandObservations } from './ai.ts';
+import { chooseAiAction, recordGameEnd, recordHandObservations } from './ai.ts';
 import { loadPolicy } from './policy.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
@@ -17,6 +17,7 @@ import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { SurrenderButton } from '../shared/Surrender.tsx';
 import BlindPokerOnline from './BlindPokerOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
+import NumberStepper from '../shared/NumberStepper.tsx';
 import type { NetRoom } from '../../net/room.ts';
 import './blindpoker.css';
 
@@ -32,6 +33,7 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<Phase>('setup');
   const [state, setState] = useState<BpState | null>(null);
   const [aiThinking, setAiThinking] = useState(false);
+  const [raiseAmt, setRaiseAmt] = useState(1);
   const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recordedHands = useRef(0);
   const gameRecorded = useRef(false);
@@ -145,11 +147,9 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
             <span className="record-line">
               통산 전적 <b>{getRecord('blind-poker').wins}승 {getRecord('blind-poker').losses}패</b>
             </span>
-            {loadOpponentModel().games > 0 && (
-              <span className="memory-line">
-                AI가 당신과의 대국 {loadOpponentModel().games}판의 베팅 패턴을 기억하고 있습니다
-              </span>
-            )}
+            <span className="memory-line">
+              AI는 자가대국 강화학습(CFR+)으로 수렴한 균형 전략으로 베팅합니다 — 패턴이 읽히지 않습니다
+            </span>
           </div>
           <button className="primary-btn" onClick={startGame}>
             AI 대전 시작
@@ -226,6 +226,23 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
                   {r === info.maxRaise ? `올인 +${r}` : `레이즈 +${r}`}
                 </button>
               ))}
+              {info.maxRaise > 1 && (
+                <div className="raise-custom">
+                  <NumberStepper
+                    value={Math.min(raiseAmt, info.maxRaise)}
+                    min={1}
+                    max={info.maxRaise}
+                    onChange={setRaiseAmt}
+                    onEnter={() => humanAct({ type: 'raise', amount: Math.min(raiseAmt, info.maxRaise) })}
+                  />
+                  <button
+                    className="action-btn raise"
+                    onClick={() => humanAct({ type: 'raise', amount: Math.min(raiseAmt, info.maxRaise) })}
+                  >
+                    직접 레이즈 +{Math.min(raiseAmt, info.maxRaise)}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

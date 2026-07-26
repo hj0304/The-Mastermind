@@ -185,13 +185,6 @@
 .jp-face.both.on { border-color: #ff7ad9; color: #ff7ad9; background: rgba(255, 122, 217, 0.1); }
 
 .jp-level { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; justify-content: center; }
-.jp-level > button {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  font-weight: 800;
-}
 .level-num { font-size: 14px; }
 .level-num b { color: var(--accent); font-size: 17px; }
 .level-num small { color: var(--text-dim); }

@@ -152,9 +152,10 @@ export default function MonochromeGame({ onExit }: Props) {
             <span className="record-line">
               통산 전적 <b>{rec.wins}승 {rec.losses}패</b>
             </span>
-            {memory > 0 && (
-              <span className="memory-line">AI가 당신과의 대국 {memory}판을 기억하고 있습니다</span>
-            )}
+            <span className="memory-line">
+              초·중반은 자가대국 학습 균형 전략
+              {memory > 0 ? `, 종반은 당신과의 대국 ${memory}판을 반영한 완전 탐색` : ', 종반은 완전 탐색'}을 사용합니다
+            </span>
           </div>
           <button className="primary-btn" onClick={startGame}>
             AI 대전 시작

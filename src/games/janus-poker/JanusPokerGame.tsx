@@ -16,6 +16,7 @@ import {
 import { loadPolicy } from './policy.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import NumberStepper from '../shared/NumberStepper.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { SurrenderButton } from '../shared/Surrender.tsx';
 import JanusPokerOnline from './JanusPokerOnline.tsx';
@@ -180,7 +181,7 @@ export default function JanusPokerGame({ onExit }: { onExit: () => void }) {
             <span className="record-line">
               통산 전적 <b>{rec.wins}승 {rec.losses}패</b>
             </span>
-            <span className="memory-line">AI는 공개된 카드를 카운팅하고 당신의 면 선택·폴드 성향을 학습합니다</span>
+            <span className="memory-line">AI는 자가대국 강화학습으로 수렴한 균형 전략으로 면을 선언하고 베팅합니다</span>
           </div>
           <button className="primary-btn" onClick={startGame}>AI 대전 시작</button>
           <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>
@@ -429,12 +430,11 @@ function LevelPicker({
 }) {
   return (
     <div className="jp-level">
-      <button onClick={() => setLevel((l) => Math.max(min, l - 1))}>−</button>
       <span className="level-num">
-        레벨 <b>{level}</b>
+        레벨
         {both && <small> (지불 {level * 2})</small>}
       </span>
-      <button onClick={() => setLevel((l) => Math.min(max, l + 1))}>＋</button>
+      <NumberStepper value={level} min={min} max={max} onChange={(v) => setLevel(() => v)} />
       <div className="quick">
         {[min, min + 2, min + 5]
           .filter((v, i, arr) => v <= max && arr.indexOf(v) === i)

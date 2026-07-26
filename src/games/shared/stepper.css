@@ -1,0 +1,37 @@
+/* 숫자 스텝퍼 (직접 입력 + ▲▼) — NumberStepper.tsx */
+
+.ns-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ns-input {
+  width: 76px;
+  height: 48px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text, #e8eef8);
+  background: var(--bg-card, rgba(20, 26, 38, 0.8));
+  border: 1px solid var(--border, rgba(140, 160, 190, 0.25));
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.ns-input::-webkit-outer-spin-button,
+.ns-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.ns-input:focus { border-color: var(--accent, #ffd166); outline: none; }
+
+.ns-col { display: flex; flex-direction: column; gap: 4px; }
+.ns-btn {
+  width: 40px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(140, 160, 190, 0.25));
+  background: var(--bg-card, rgba(20, 26, 38, 0.8));
+  color: var(--text-dim, #9aa8c0);
+  font-size: 11px;
+  line-height: 1;
+}
+.ns-btn:hover { border-color: var(--accent, #ffd166); color: var(--accent, #ffd166); }

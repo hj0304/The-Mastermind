@@ -3,6 +3,7 @@ import type { BpAction, BpState, PlayerId } from './engine.ts';
 import { act, createGame, gameWinner, legalInfo, nextHand, potSize, seenCards } from './engine.ts';
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import NumberStepper from '../shared/NumberStepper.tsx';
 import './blindpoker.css';
 import '../../net/online.css';
 
@@ -39,6 +40,7 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
   const opp: PlayerId = (1 - me) as PlayerId;
   const stateRef = useRef<BpState | null>(null);
   const [view, setView] = useState<BpView | null>(null);
+  const [raiseAmt, setRaiseAmt] = useState(1);
   const [oppLeft, setOppLeft] = useState(false);
   /** 선공 동전 - 양쪽이 같은 결과를 본다 */
   const [toss, setToss] = useState<PlayerId | null>(null);
@@ -222,6 +224,23 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
                   {r === info.maxRaise ? `올인 +${r}` : `레이즈 +${r}`}
                 </button>
               ))}
+              {info.maxRaise > 1 && (
+                <div className="raise-custom">
+                  <NumberStepper
+                    value={Math.min(raiseAmt, info.maxRaise)}
+                    min={1}
+                    max={info.maxRaise}
+                    onChange={setRaiseAmt}
+                    onEnter={() => doAct({ type: 'raise', amount: Math.min(raiseAmt, info.maxRaise) })}
+                  />
+                  <button
+                    className="action-btn raise"
+                    onClick={() => doAct({ type: 'raise', amount: Math.min(raiseAmt, info.maxRaise) })}
+                  >
+                    직접 레이즈 +{Math.min(raiseAmt, info.maxRaise)}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

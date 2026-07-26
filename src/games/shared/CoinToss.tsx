@@ -18,6 +18,40 @@ import './coin.css';
 
 type Side = 0 | 1;
 
+const EDGE_SEGMENTS = 20;
+
+/**
+ * 3D 동전 본체 — 겉(coin3d)은 궤적·요동(rotateY/Z), 속(coin-spin)은 rotateX 회전을
+ * 맡아 두 변환이 합성된다. 옆면은 세그먼트 20개로 만든 실제 원기둥 벽.
+ */
+function Coin3D({
+  wrapClass,
+  spinClass,
+  head,
+  tail,
+}: {
+  wrapClass: string;
+  spinClass: string;
+  head: string;
+  tail: string;
+}) {
+  return (
+    <div className={`coin3d ${wrapClass}`}>
+      <div className={`coin-spin ${spinClass}`}>
+        <span className="coin-face front">{head}</span>
+        <span className="coin-face back">{tail}</span>
+        {Array.from({ length: EDGE_SEGMENTS }, (_, i) => (
+          <span
+            key={i}
+            className="coin-edge-seg"
+            style={{ transform: `rotateZ(${(360 / EDGE_SEGMENTS) * i}deg) translateY(-52px) rotateX(90deg)` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CoinToss({
   mode = 'show',
   first,
@@ -77,11 +111,7 @@ export default function CoinToss({
       <div className="coin-overlay">
         <p className="coin-title">동전을 던져 선공을 정합니다</p>
         <div className="coin-stage">
-          <div className="coin idle">
-            <span className="coin-face front">{headText}</span>
-            <span className="coin-edge" />
-            <span className="coin-face back">{tailText}</span>
-          </div>
+          <Coin3D wrapClass="idle" spinClass="rest" head={headText} tail={tailText} />
           <div className="coin-shadow" />
         </div>
         <p className="coin-legend">어느 면이 나올지 부르세요 — 맞히면 내가 선공입니다</p>
@@ -102,11 +132,12 @@ export default function CoinToss({
           : '선공을 정합니다'}
       </p>
       <div className="coin-stage">
-        <div className={`coin flip ${face === 0 ? 'to-heads' : 'to-tails'} ${landed ? 'done' : ''}`}>
-          <span className="coin-face front">{headText}</span>
-          <span className="coin-edge" />
-          <span className="coin-face back">{tailText}</span>
-        </div>
+        <Coin3D
+          wrapClass={`flip ${landed ? 'done' : ''}`}
+          spinClass={face === 0 ? 'to-heads' : 'to-tails'}
+          head={headText}
+          tail={tailText}
+        />
         <div className={`coin-shadow ${landed ? '' : 'flying'}`} />
       </div>
       {landed && winner !== null ? (
