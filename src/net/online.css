@@ -9,7 +9,7 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 24px 20px;
-  max-width: 340px;
+  max-width: 440px;
   margin: 24px auto;
   text-align: center;
 }
@@ -27,15 +27,16 @@
 
 /* 공개 방 목록 */
 .online-lobby {
-  width: min(340px, 100%);
+  width: 100%;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg);
-  padding: 10px 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-height: 220px;
+  gap: 8px;
+  min-height: 120px;
+  max-height: min(46vh, 420px);
   overflow-y: auto;
 }
 .lobby-head {
@@ -55,10 +56,11 @@
 .lobby-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
+  gap: 12px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 10px;
+  flex-shrink: 0;
 }
 .lobby-code {
   font-weight: 800;
@@ -80,10 +82,16 @@
   color: var(--text);
   padding: 10px 12px;
   font-size: 1.05rem;
-  width: 150px;
+  width: 170px;
   text-align: center;
   letter-spacing: 3px;
   text-transform: uppercase;
+}
+/* 코드 입력값은 크고 넓게, 안내 문구는 작고 촘촘하게 — 잘림 방지 */
+.online-join-row input::placeholder {
+  font-size: 0.82rem;
+  letter-spacing: normal;
+  color: var(--text-dim);
 }
 .online-join-row input:focus { outline: none; border-color: var(--accent); }
 
