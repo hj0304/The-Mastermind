@@ -71,22 +71,29 @@ export default function CoinToss({
   const [called, setCalled] = useState<Side | null>(null);
   /** 실제로 위로 나온 면 — null이면 아직 안 던진 상태 */
   const [face, setFace] = useState<Side | null>(mode === 'show' ? (first ?? 0) : null);
+  /** 바닥에 착지해 누운 상태 */
   const [landed, setLanded] = useState(false);
+  /** 누운 동전이 들려 올라와 면을 보여준 상태 */
+  const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(false);
 
-  // 던져진 뒤: 착지(바운스 포함) → 결과 표시 → 종료
+  // 던져진 뒤: 착지·눕기(2.1s) → 잠시 정지(0.55s) → 들어올려 면 공개(0.9s) → 결과 → 종료
   useEffect(() => {
     if (face === null) return;
-    const t = setTimeout(() => setLanded(true), 2150);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setLanded(true), 2150);
+    const t2 = setTimeout(() => setRevealed(true), 3650);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [face]);
 
   useEffect(() => {
-    if (!landed || face === null) return;
+    if (!revealed || face === null) return;
     const t = setTimeout(() => finish(), holdMs);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [landed]);
+  }, [revealed]);
 
   function finish() {
     if (done || face === null) return;
@@ -134,15 +141,15 @@ export default function CoinToss({
       </p>
       <div className="coin-stage">
         <Coin3D
-          wrapClass={`flip ${landed ? 'done' : ''}`}
+          wrapClass={`flip ${landed ? 'rise' : ''}`}
           spinClass={face === 0 ? 'to-heads' : 'to-tails'}
           head={headText}
           tail={tailText}
         />
         <div className="coin-floor" />
-        <div className={`coin-shadow ${landed ? '' : 'flying'}`} />
-        {/* 착지 후 결과가 동전 위로 떠오른다 */}
-        {landed && winner !== null && (
+        <div className={`coin-shadow ${landed ? 'lifted' : 'flying'}`} />
+        {/* 들어올려진 동전이 면을 보여준 뒤, 판정 문구는 바닥 쪽에 */}
+        {revealed && winner !== null && (
           <div className="coin-verdict">
             <b>{face === 0 ? '앞면' : '뒷면'}</b>
             <span>{labels[winner]} 선공!</span>
