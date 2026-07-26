@@ -28,6 +28,8 @@ export interface Rule {
 
 const ds = (n: number): number => String(n).split('').reduce((s, d) => s + Number(d), 0);
 const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+/** 수를 거꾸로 뒤집는다 (선행 0은 수로 변환되며 사라짐: 120 → 21) */
+const rev = (n: number): number => Number(String(n).split('').reverse().join(''));
 const CIRCLE: Record<string, number> = { '0': 1, '6': 1, '8': 2, '9': 1 };
 
 /** 처음 나온 순서대로 (숫자, 그 숫자의 총 개수)를 이어 쓴다 — 원작 5라운드 규칙 */
@@ -58,6 +60,15 @@ export const RULES: Rule[] = [
   { id: 'gcd', desc: '두 수의 최대공약수', difficulty: 3, fn: (a, b) => String(gcd(Math.max(a, b), Math.min(a, b))) },
   { id: 'digit-count', desc: '두 수의 자릿수 개수의 합', difficulty: 2, fn: (a, b) => String(String(a).length + String(b).length) },
   { id: 'last-digit-prod', desc: '(두 수의 곱)의 일의 자리', difficulty: 3, fn: (a, b) => String((a * b) % 10) },
+  { id: 'avg-floor', desc: '두 수의 평균 (소수점 버림)', difficulty: 2, fn: (a, b) => String(Math.floor((a + b) / 2)) },
+  { id: 'concat-big-small', desc: '(큰 수)(작은 수)를 이어 쓴 수', difficulty: 2, fn: (a, b) => `${Math.max(a, b)}${Math.min(a, b)}` },
+  { id: 'reverse-sum', desc: '각 수를 거꾸로 뒤집어 더한 값', difficulty: 4, fn: (a, b) => String(rev(a) + rev(b)) },
+  { id: 'digit-prod', desc: '모든 자리 숫자의 곱', difficulty: 3, fn: (a, b) => String((String(a) + String(b)).split('').reduce((s, d) => s * Number(d), 1)) },
+  { id: 'max-digit', desc: '모든 자리 중 가장 큰 숫자', difficulty: 2, fn: (a, b) => String(Math.max(...(String(a) + String(b)).split('').map(Number))) },
+  { id: 'min-digit', desc: '모든 자리 중 가장 작은 숫자', difficulty: 3, fn: (a, b) => String(Math.min(...(String(a) + String(b)).split('').map(Number))) },
+  { id: 'odd-count', desc: '두 수의 홀수 자리 숫자 개수', difficulty: 3, fn: (a, b) => String((String(a) + String(b)).split('').filter((d) => Number(d) % 2 === 1).length) },
+  { id: 'sum-times-diff', desc: '(두 수의 합) × (두 수의 차)', difficulty: 4, fn: (a, b) => String((a + b) * Math.abs(a - b)) },
+  { id: 'sum-reversed', desc: '(두 수의 합)을 거꾸로 뒤집은 수', difficulty: 4, fn: (a, b) => String(rev(a + b)) },
 ];
 
 // ---------- 상태 ----------

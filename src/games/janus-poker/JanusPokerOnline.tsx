@@ -3,6 +3,7 @@ import type { Face, JPAction, JPState, PlayerId } from './engine.ts';
 import { applyAction, callCost, createGame, maxLevelFor, nextHand } from './engine.ts';
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import NumberStepper from '../shared/NumberStepper.tsx';
 import './janus.css';
 import '../../net/online.css';
 
@@ -433,12 +434,11 @@ function LevelPicker({
 }) {
   return (
     <div className="jp-level">
-      <button onClick={() => setLevel((l) => Math.max(min, l - 1))}>−</button>
       <span className="level-num">
-        레벨 <b>{level}</b>
+        레벨
         {both && <small> (지불 {level * 2})</small>}
       </span>
-      <button onClick={() => setLevel((l) => Math.min(max, l + 1))}>＋</button>
+      <NumberStepper value={level} min={min} max={max} onChange={(v) => setLevel(() => v)} />
       <div className="quick">
         {[min, min + 2, min + 5]
           .filter((v, i, arr) => v <= max && arr.indexOf(v) === i)

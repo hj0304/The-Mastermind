@@ -110,6 +110,13 @@
 .action-btn.call { color: var(--accent-2); border-color: var(--accent-2); }
 .action-btn.raise { color: var(--accent); border-color: var(--accent); }
 
+/* 직접 레이즈 (스텝퍼 + 버튼) */
+.raise-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* 핸드 결과 */
 .bp-hand-result {
   display: flex;

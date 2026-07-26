@@ -149,7 +149,7 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
           <div className="setup-stats">
             <span className="extreme-tag">EXTREME AI</span>
             <span className="record-line">통산 전적 <b>{rec.wins}승 {rec.losses}패</b></span>
-            <span className="memory-line">AI는 쇼다운마다 당신의 베팅 크기와 실제 타일을 대조해 블러핑을 학습합니다</span>
+            <span className="memory-line">AI는 자가대국으로 학습한 배치 혼합 전략과 콜/폴드 균형 전략을 사용합니다</span>
           </div>
           <button className="primary-btn" onClick={enterArrange}>AI 대전 — 배치 설계하기</button>
           <button className="ghost-btn" onClick={() => setOnline('panel')}>⚔️ 온라인 대전</button>
