@@ -18,6 +18,7 @@ import { SurrenderButton } from '../shared/Surrender.tsx';
 import BlindPokerOnline from './BlindPokerOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import NumberStepper from '../shared/NumberStepper.tsx';
+import BettingTable, { ActionDock, BetPresets, raisePresets } from '../shared/BettingTable.tsx';
 import type { NetRoom } from '../../net/room.ts';
 import './blindpoker.css';
 
@@ -176,87 +177,28 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
     <div className="bp-root">
       <GameHeader onExit={onExit} surrender={phase === 'playing' && state.phase !== 'gameover'} />
 
-      <div className="bp-scoreboard">
-        <div className="stack me">
-          나 <b>{state.stacks[HUMAN]}</b>칩
-        </div>
-        <div className="pot-info">
-          핸드 #{state.handNo}
-          <div className="pot">팟 {state.phase === 'betting' ? potSize(state) : lastHand?.potWon ?? 0}</div>
-          {state.carried > 0 && <div className="carried">이월 {state.carried}</div>}
-        </div>
-        <div className="stack ai">
-          AI (EXTREME) <b>{state.stacks[AI]}</b>칩
-        </div>
-      </div>
-
-      {/* 카드 테이블 */}
-      <div className="bp-table">
-        <div className="card-slot">
-          <div className="slot-label">AI의 이마</div>
-          <div className="pcard face">{state.cards[AI]}</div>
-          <div className="bet-chips">베팅 {state.invested[AI]}</div>
-        </div>
-        <div className="vs">VS</div>
-        <div className="card-slot">
-          <div className="slot-label">내 이마 (나만 못 봄)</div>
-          <div className="pcard hidden-card">?</div>
-          <div className="bet-chips">베팅 {state.invested[HUMAN]}</div>
-        </div>
-      </div>
-
-      {/* 액션 패널 */}
-      {state.phase === 'betting' && (
-        <div className="bp-actions">
-          {aiThinking && <div className="thinking">AI가 고민 중…</div>}
-          {myTurn && info && (
-            <>
-              <button className="action-btn fold" onClick={() => humanAct({ type: 'fold' })}>
-                폴드
-              </button>
-              <button className="action-btn call" onClick={() => humanAct({ type: 'call' })}>
-                {info.callCost > 0 ? `콜 (+${info.callCost})` : '콜 (공개)'}
-              </button>
-              {info.raiseOptions.map((r) => (
-                <button
-                  key={r}
-                  className="action-btn raise"
-                  onClick={() => humanAct({ type: 'raise', amount: r })}
-                >
-                  {r === info.maxRaise ? `올인 +${r}` : `레이즈 +${r}`}
-                </button>
-              ))}
-              {info.maxRaise > 1 && (
-                <div className="raise-custom">
-                  <NumberStepper
-                    value={Math.min(raiseAmt, info.maxRaise)}
-                    min={1}
-                    max={info.maxRaise}
-                    onChange={setRaiseAmt}
-                    onEnter={() => humanAct({ type: 'raise', amount: Math.min(raiseAmt, info.maxRaise) })}
-                  />
-                  <button
-                    className="action-btn raise"
-                    onClick={() => humanAct({ type: 'raise', amount: Math.min(raiseAmt, info.maxRaise) })}
-                  >
-                    직접 레이즈 +{Math.min(raiseAmt, info.maxRaise)}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* 핸드 결과 */}
-      {state.phase === 'result' && lastHand && (
-        <div className="bp-hand-result">
-          <HandResultView hand={lastHand} />
-          <button className="primary-btn" onClick={proceedNextHand}>
-            다음 핸드
-          </button>
-        </div>
-      )}
+      {/* 듀얼 레인 테이블: 상대 → 상대 베팅 → 팟 → 내 베팅 → 나 */}
+      <BettingTable
+        opp={{ name: 'AI', tag: 'EXTREME', stack: state.stacks[AI] }}
+        me={{ name: '나', stack: state.stacks[HUMAN] }}
+        oppBet={state.invested[AI]}
+        myBet={state.invested[HUMAN]}
+        pot={state.phase === 'betting' ? potSize(state) : lastHand?.potWon ?? 0}
+        handNo={state.handNo}
+        carried={state.carried}
+        oppCard={
+          <div className="card-slot">
+            <div className="slot-label">AI의 이마</div>
+            <div className="pcard face">{state.cards[AI]}</div>
+          </div>
+        }
+        myCard={
+          <div className="card-slot">
+            <div className="slot-label">내 이마 (나만 못 봄)</div>
+            <div className="pcard hidden-card small">?</div>
+          </div>
+        }
+      />
 
       {/* 카운팅 보조: 내가 본 카드 */}
       <div className="bp-seen">
@@ -298,6 +240,61 @@ export default function BlindPokerGame({ onExit }: { onExit: () => void }) {
           );
         })}
       </div>
+
+      {/* 액션 독 — 하단 고정 (베팅 조작 · AI 대기 · 핸드 결과) */}
+      {(state.phase === 'betting' || state.phase === 'result') && (
+        <ActionDock>
+          {state.phase === 'betting' && state.toAct === AI && (
+            <div className="bt-thinking">AI가 고민 중…</div>
+          )}
+          {state.phase === 'betting' && myTurn && info && (
+            <>
+              {info.maxRaise >= 1 && (
+                <>
+                  <BetPresets
+                    presets={raisePresets(potSize(state), info.maxRaise)}
+                    value={Math.min(raiseAmt, info.maxRaise)}
+                    onPick={setRaiseAmt}
+                  />
+                  <div className="bt-row">
+                    <NumberStepper
+                      value={Math.min(raiseAmt, info.maxRaise)}
+                      min={1}
+                      max={info.maxRaise}
+                      onChange={setRaiseAmt}
+                      onEnter={() => humanAct({ type: 'raise', amount: Math.min(raiseAmt, info.maxRaise) })}
+                    />
+                    <button
+                      className="bt-btn raise"
+                      onClick={() => humanAct({ type: 'raise', amount: Math.min(raiseAmt, info.maxRaise) })}
+                    >
+                      {Math.min(raiseAmt, info.maxRaise) === info.maxRaise
+                        ? `올인 +${info.maxRaise}`
+                        : `레이즈 +${Math.min(raiseAmt, info.maxRaise)}`}
+                    </button>
+                  </div>
+                </>
+              )}
+              <div className="bt-row">
+                <button className="bt-btn fold" onClick={() => humanAct({ type: 'fold' })}>
+                  폴드<small>10을 들고 폴드하면 −10</small>
+                </button>
+                <button className="bt-btn call" onClick={() => humanAct({ type: 'call' })}>
+                  {info.callCost > 0 ? `콜 +${info.callCost}` : '콜 (공개)'}
+                </button>
+              </div>
+            </>
+          )}
+          {state.phase === 'result' && lastHand && (
+            <div className="bt-result">
+              <HandResultView hand={lastHand} />
+              <button className="primary-btn" onClick={proceedNextHand}>
+                다음 핸드
+              </button>
+            </div>
+          )}
+        </ActionDock>
+      )}
 
       {phase === 'done' && (
         <div className="bp-overlay">
