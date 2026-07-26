@@ -18,6 +18,7 @@ import YutBoard from '../shared/YutBoard.tsx';
 import type { BoardPiece } from '../shared/YutBoard.tsx';
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import ChatPanel from '../../net/ChatPanel.tsx';
 import { makeCommitment, verifyCommitment } from '../../net/commit.ts';
 import './bluff.css';
 import '../../net/online.css';
@@ -398,6 +399,7 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
         <p className="online-wait" style={{ justifyContent: 'center', marginTop: 40 }}>
           <span className="online-spinner" /> 게임 시작을 기다리는 중…
         </p>
+        <ChatPanel room={room} />
       </div>
     );
   }
@@ -665,6 +667,7 @@ export default function YutBluffOnline({ room, onExit }: { room: NetRoom; onExit
           </div>
         </div>
       )}
+      <ChatPanel room={room} />
     </div>
   );
 }

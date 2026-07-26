@@ -16,6 +16,7 @@ import {
 import { viewFor } from './view.ts';
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import ChatPanel from '../../net/ChatPanel.tsx';
 import { CardBack, CardView, COLOR_NAME } from './cards.tsx';
 import './quattro.css';
 import '../../net/online.css';
@@ -178,6 +179,7 @@ export default function QuattroOnline({ room, onExit }: { room: NetRoom; onExit:
         <p className="online-wait" style={{ justifyContent: 'center', marginTop: 40 }}>
           <span className="online-spinner" /> 게임 시작을 기다리는 중…
         </p>
+        <ChatPanel room={room} />
       </div>
     );
   }
@@ -360,6 +362,7 @@ export default function QuattroOnline({ room, onExit }: { room: NetRoom; onExit:
           </div>
         </div>
       )}
+      <ChatPanel room={room} />
     </div>
   );
 }

@@ -34,6 +34,10 @@ export interface NetRoom {
   send: (msg: unknown) => void;
   /** 수신 콜백 등록 — 해제 함수 반환 */
   onMsg: (cb: (msg: unknown) => void) => () => void;
+  /** 상대에게 채팅 전송 — 게임 프로토콜과 분리된 사이드채널 */
+  sendChat: (text: string) => void;
+  /** 채팅 수신 콜백 등록 — 해제 함수 반환 */
+  onChat: (cb: (text: string) => void) => () => void;
   /** 피어 입장/퇴장 콜백 등록 — 해제 함수 반환 */
   onPeers: (cb: (count: number) => void) => () => void;
   peerCount: () => number;

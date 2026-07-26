@@ -16,6 +16,7 @@ import { viewFor } from './view.ts';
 import { Board, DeadTray, typeLabel } from './board.tsx';
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import ChatPanel from '../../net/ChatPanel.tsx';
 import './numberjanggi.css';
 import '../../net/online.css';
 
@@ -257,6 +258,7 @@ export default function NumberJanggiOnline({ room, onExit }: { room: NetRoom; on
             </div>
           </div>
         )}
+        <ChatPanel room={room} />
       </div>
     );
   }
@@ -385,6 +387,7 @@ export default function NumberJanggiOnline({ room, onExit }: { room: NetRoom; on
           </div>
         </div>
       )}
+      <ChatPanel room={room} />
     </div>
   );
 }

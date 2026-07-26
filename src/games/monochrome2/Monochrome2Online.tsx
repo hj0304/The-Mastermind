@@ -5,6 +5,7 @@ import { viewFor } from './view.ts';
 import type { NetRoom } from '../../net/room.ts';
 import { makeCommitment, verifyCommitment } from '../../net/commit.ts';
 import CoinToss from '../shared/CoinToss.tsx';
+import ChatPanel from '../../net/ChatPanel.tsx';
 import BidInput from './BidInput.tsx';
 import { Gauge } from './gauge.tsx';
 import './monochrome2.css';
@@ -279,6 +280,7 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
         <p className="online-wait" style={{ justifyContent: 'center', marginTop: 40 }}>
           <span className="online-spinner" /> 게임 시작을 기다리는 중…
         </p>
+        <ChatPanel room={room} />
       </div>
     );
   }
@@ -404,6 +406,7 @@ export default function Monochrome2Online({ room, onExit }: { room: NetRoom; onE
           </div>
         </div>
       )}
+      <ChatPanel room={room} />
     </div>
   );
 }

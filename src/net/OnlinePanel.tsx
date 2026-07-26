@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { NetRoom } from './room.ts';
 import { makeRoomCode, normalizeCode, openRoom } from './room.ts';
+import type { LobbyRoom } from './lobby.ts';
+import { announceRoom, watchLobby } from './lobby.ts';
 import './online.css';
 
 /**
@@ -20,19 +22,31 @@ export default function OnlinePanel({
   const [code, setCode] = useState('');
   const [joinInput, setJoinInput] = useState('');
   const [copied, setCopied] = useState(false);
+  /** 방 목록에 공개할지 (공개 방은 목록에서 아무나 입장 가능) */
+  const [publicRoom, setPublicRoom] = useState(true);
+  const [lobby, setLobby] = useState<LobbyRoom[]>([]);
   /** 오래 기다려도 안 붙을 때 원인 안내 (무한 스피너 방지) */
   const [slow, setSlow] = useState(false);
   const roomRef = useRef<NetRoom | null>(null);
   const readyRef = useRef(false);
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const announceStop = useRef<(() => void) | null>(null);
 
-  // 패널을 떠날 때 미연결 방 정리
+  // 패널을 떠날 때 미연결 방·공고 정리
   useEffect(() => {
     return () => {
       if (slowTimer.current) clearTimeout(slowTimer.current);
       if (!readyRef.current) roomRef.current?.leave();
+      announceStop.current?.();
     };
   }, []);
+
+  // 메뉴 화면에서 공개 방 목록 구독
+  useEffect(() => {
+    if (mode !== 'menu') return;
+    setLobby([]);
+    return watchLobby(gameName, setLobby);
+  }, [mode, gameName]);
 
   function watchPeers(room: NetRoom) {
     roomRef.current = room;
@@ -45,6 +59,8 @@ export default function OnlinePanel({
       if (count > 0 && !readyRef.current) {
         readyRef.current = true;
         if (slowTimer.current) clearTimeout(slowTimer.current);
+        announceStop.current?.(); // 상대가 들어왔으니 공고 중단
+        announceStop.current = null;
         off();
         onReady(room);
       }
@@ -52,6 +68,8 @@ export default function OnlinePanel({
     if (room.peerCount() > 0 && !readyRef.current) {
       readyRef.current = true;
       if (slowTimer.current) clearTimeout(slowTimer.current);
+      announceStop.current?.();
+      announceStop.current = null;
       onReady(room);
     }
   }
@@ -60,12 +78,17 @@ export default function OnlinePanel({
     const c = makeRoomCode();
     setCode(c);
     setMode('hosting');
+    if (publicRoom) announceStop.current = announceRoom(gameName, c);
     watchPeers(openRoom(c, true, gameName));
   }
 
   function join() {
     const c = normalizeCode(joinInput);
     if (c.length < 6) return;
+    joinCode(c);
+  }
+
+  function joinCode(c: string) {
     setCode(c);
     setMode('joining');
     watchPeers(openRoom(c, false, gameName));
@@ -87,12 +110,34 @@ export default function OnlinePanel({
       {mode === 'menu' && (
         <>
           <button className="primary-btn" onClick={host}>방 만들기</button>
+          <label className="online-public">
+            <input type="checkbox" checked={publicRoom} onChange={(e) => setPublicRoom(e.target.checked)} />
+            방 목록에 공개 (끄면 코드를 아는 사람만 입장)
+          </label>
+
+          <div className="online-lobby">
+            <div className="lobby-head">공개 방 목록{lobby.length > 0 && ` (${lobby.length})`}</div>
+            {lobby.length === 0 ? (
+              <p className="lobby-empty">
+                <span className="online-spinner" /> 지금 열린 공개 방이 없습니다
+              </p>
+            ) : (
+              lobby.map((r) => (
+                <div key={r.code} className="lobby-row">
+                  <span className="lobby-code">{r.code}</span>
+                  <span className="lobby-status">대기 중</span>
+                  <button className="ghost-btn" onClick={() => joinCode(r.code)}>입장</button>
+                </div>
+              ))
+            )}
+          </div>
+
           <div className="online-join-row">
             <input
               value={joinInput}
               onChange={(e) => setJoinInput(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === 'Enter' && join()}
-              placeholder="방 코드 입력"
+              placeholder="방 코드 직접 입력"
               maxLength={6}
             />
             <button className="ghost-btn" onClick={join} disabled={normalizeCode(joinInput).length < 6}>
@@ -104,7 +149,11 @@ export default function OnlinePanel({
       )}
       {mode === 'hosting' && (
         <>
-          <p className="online-hint">친구에게 이 코드를 알려주세요</p>
+          <p className="online-hint">
+            {announceStop.current
+              ? '방 목록에 공개했습니다 — 코드를 직접 알려줘도 됩니다'
+              : '친구에게 이 코드를 알려주세요'}
+          </p>
           <button className="online-code" onClick={copyCode} title="눌러서 복사">
             {code}{copied && <span className="copied">복사됨!</span>}
           </button>
