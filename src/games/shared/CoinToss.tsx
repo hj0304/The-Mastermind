@@ -74,10 +74,10 @@ export default function CoinToss({
   const [landed, setLanded] = useState(false);
   const [done, setDone] = useState(false);
 
-  // 던져진 뒤: 착지 → 결과 표시 → 종료
+  // 던져진 뒤: 착지(바운스 포함) → 결과 표시 → 종료
   useEffect(() => {
     if (face === null) return;
-    const t = setTimeout(() => setLanded(true), 1750);
+    const t = setTimeout(() => setLanded(true), 2150);
     return () => clearTimeout(t);
   }, [face]);
 
@@ -112,6 +112,7 @@ export default function CoinToss({
         <p className="coin-title">동전을 던져 선공을 정합니다</p>
         <div className="coin-stage">
           <Coin3D wrapClass="idle" spinClass="rest" head={headText} tail={tailText} />
+          <div className="coin-floor" />
           <div className="coin-shadow" />
         </div>
         <p className="coin-legend">어느 면이 나올지 부르세요 — 맞히면 내가 선공입니다</p>
@@ -138,13 +139,17 @@ export default function CoinToss({
           head={headText}
           tail={tailText}
         />
+        <div className="coin-floor" />
         <div className={`coin-shadow ${landed ? '' : 'flying'}`} />
+        {/* 착지 후 결과가 동전 위로 떠오른다 */}
+        {landed && winner !== null && (
+          <div className="coin-verdict">
+            <b>{face === 0 ? '앞면' : '뒷면'}</b>
+            <span>{labels[winner]} 선공!</span>
+          </div>
+        )}
       </div>
-      {landed && winner !== null ? (
-        <p className="coin-result">
-          <b>{face === 0 ? '앞면' : '뒷면'}</b> — {labels[winner]} 선공!
-        </p>
-      ) : (
+      {!landed && (
         <p className="coin-legend">
           {mode === 'call' ? ' ' : '위로 나온 면의 주인이 선공입니다'}
         </p>

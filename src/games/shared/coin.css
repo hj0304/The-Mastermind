@@ -25,34 +25,48 @@
   color: #9aa8c0;
 }
 
-/* 무대 — 원근을 준다. 동전은 이 안에서 3D로 돈다 */
+/* 무대 — 원근을 준다. 동전은 위로 던져졌다가 바닥에 떨어져 눕는다 */
 .coin-stage {
   position: relative;
-  width: 132px;
-  height: 168px;
+  width: 160px;
+  height: 230px;
   display: flex;
   align-items: center;
   justify-content: center;
-  perspective: 460px;
-  perspective-origin: 50% 18%; /* 살짝 위에서 내려다보는 시점 */
+  perspective: 520px;
+  perspective-origin: 50% 10%; /* 위에서 내려다보는 시점 — 누운 동전의 면이 보인다 */
 }
 
-/* 바닥 그림자 — 동전이 떠 있을 때 작아진다 */
+/* 바닥 — 동전이 떨어질 자리 */
+.coin-floor {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  width: 148px;
+  height: 40px;
+  margin-left: -74px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(140, 160, 190, 0.13), rgba(140, 160, 190, 0.04) 55%, transparent 72%);
+}
+
+/* 바닥 그림자 — 동전이 떠 있을 때 작아지고, 착지 순간 퍼진다 */
 .coin-shadow {
   position: absolute;
-  bottom: 8px;
-  width: 84px;
-  height: 16px;
+  bottom: 12px;
+  width: 92px;
+  height: 18px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(0, 0, 0, 0.55), transparent 70%);
   filter: blur(1px);
 }
-.coin-shadow.flying { animation: coin-shadow 1.75s cubic-bezier(0.3, 0, 0.3, 1) forwards; }
+.coin-shadow.flying { animation: coin-shadow 2.1s linear forwards; }
 @keyframes coin-shadow {
-  0% { transform: scale(1) translateX(0); opacity: 0.55; filter: blur(1px); }
-  45% { transform: scale(0.42) translateX(-8px); opacity: 0.16; filter: blur(4px); }
-  90% { transform: scale(1.08) translateX(0); opacity: 0.6; filter: blur(1px); }
-  100% { transform: scale(1) translateX(0); opacity: 0.55; filter: blur(1px); }
+  0% { transform: scale(0.8); opacity: 0.4; filter: blur(2px); }
+  38% { transform: scale(0.38) translateX(-8px); opacity: 0.14; filter: blur(5px); }
+  66% { transform: scale(1.15); opacity: 0.65; filter: blur(1px); }
+  76% { transform: scale(0.92); opacity: 0.45; filter: blur(2px); }
+  86% { transform: scale(1.12); opacity: 0.65; filter: blur(1px); }
+  100% { transform: scale(1.05); opacity: 0.6; filter: blur(1px); }
 }
 
 /* ---- 동전 본체 ----
@@ -144,28 +158,33 @@
 .coin-edge-seg:nth-child(even) { filter: brightness(0.82); }
 
 /* ---- 던지기 애니메이션 ----
-   속(coin-spin): 0deg = 앞면. 360° 배수로 끝나면 앞면, +180°면 뒷면 */
-.coin3d.flip .coin-spin.to-heads { animation: coin-spin-heads 1.75s cubic-bezier(0.15, 0.55, 0.35, 1) forwards; }
-.coin3d.flip .coin-spin.to-tails { animation: coin-spin-tails 1.75s cubic-bezier(0.15, 0.55, 0.35, 1) forwards; }
+   속(coin-spin): 0deg = 앞면이 카메라를 본다. 착지 시점(66%)까지 회전을 끝내고
+   +75° 기울여 "바닥에 누운" 포즈로 멈춘다 (위에서 내려다보므로 면이 보인다).
+   2595° ≡ 75° → 앞면 위, 2775° ≡ 255° → 뒷면 위 */
+.coin3d.flip .coin-spin.to-heads { animation: coin-spin-heads 2.1s linear forwards; }
+.coin3d.flip .coin-spin.to-tails { animation: coin-spin-tails 2.1s linear forwards; }
 @keyframes coin-spin-heads {
-  from { transform: rotateX(-14deg); }
-  to { transform: rotateX(2520deg); }
+  0% { transform: rotateX(-14deg); animation-timing-function: cubic-bezier(0.2, 0.5, 0.5, 1); }
+  66% { transform: rotateX(2595deg); }
+  100% { transform: rotateX(2595deg); }
 }
 @keyframes coin-spin-tails {
-  from { transform: rotateX(-14deg); }
-  to { transform: rotateX(2700deg); }
+  0% { transform: rotateX(-14deg); animation-timing-function: cubic-bezier(0.2, 0.5, 0.5, 1); }
+  66% { transform: rotateX(2775deg); }
+  100% { transform: rotateX(2775deg); }
 }
 
-/* 겉(coin3d): 포물선 + 옆 비틀림(rotateY) + 기울기(rotateZ) — 공중에서 축이 흔들린다 */
-.coin3d.flip { animation: coin-travel 1.75s cubic-bezier(0.15, 0.55, 0.35, 1) forwards; }
+/* 겉(coin3d): 위로 던져졌다가(38% 정점) 바닥으로 낙하(66% 1차 착지),
+   튀어올랐다가(76%) 다시 떨어져(86%) 눕는다. 공중에서는 rotateY로 축이 흔들린다 */
+.coin3d.flip { animation: coin-travel 2.1s linear forwards; }
 @keyframes coin-travel {
-  0%   { transform: translateY(0) translateX(0) rotateY(-10deg) rotateZ(-3deg) scale(1); }
-  12%  { transform: translateY(-30px) translateX(2px) rotateY(14deg) rotateZ(2deg) scale(0.99); }
-  45%  { transform: translateY(-160px) translateX(-6px) rotateY(38deg) rotateZ(7deg) scale(0.86); }
-  78%  { transform: translateY(-42px) translateX(3px) rotateY(-16deg) rotateZ(-2deg) scale(0.99); }
-  90%  { transform: translateY(0) translateX(0) rotateY(4deg) rotateZ(1deg) scale(1.05); }
-  96%  { transform: translateY(-7px) translateX(0) rotateY(0deg) rotateZ(0deg) scale(1.01); }
-  100% { transform: translateY(0) translateX(0) rotateY(0deg) rotateZ(0deg) scale(1); }
+  0%   { transform: translateY(0) rotateY(-10deg) rotateZ(-3deg) scale(1); animation-timing-function: cubic-bezier(0.25, 0.6, 0.5, 1); }
+  38%  { transform: translateY(-158px) rotateY(36deg) rotateZ(6deg) scale(0.85); animation-timing-function: cubic-bezier(0.5, 0, 0.85, 0.6); }
+  66%  { transform: translateY(56px) rotateY(-8deg) rotateZ(0deg) scale(1); animation-timing-function: cubic-bezier(0.2, 0.7, 0.5, 1); }
+  76%  { transform: translateY(24px) rotateY(-3deg) scale(1); animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.5); }
+  86%  { transform: translateY(56px) rotateY(0deg) scale(1); }
+  92%  { transform: translateY(53px) scale(1.01); }
+  100% { transform: translateY(56px) rotateY(0deg) rotateZ(0deg) scale(1); }
 }
 
 /* 착지 순간 반짝 (최종 포즈는 fill-forwards가 유지) */
@@ -173,6 +192,38 @@
 @keyframes coin-glint {
   0% { filter: brightness(1.7); }
   100% { filter: brightness(1); }
+}
+
+/* ---- 판정 배지 — 누운 동전 위로 떠오른다 ---- */
+.coin-verdict {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: rgba(14, 18, 28, 0.88);
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 209, 102, 0.12);
+  white-space: nowrap;
+  animation: coin-verdict-rise 0.5s cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+.coin-verdict b {
+  font-size: 1.3rem;
+  color: #ffd166;
+  letter-spacing: 0.06em;
+}
+.coin-verdict span {
+  font-size: 0.85rem;
+  color: #e8eef8;
+}
+@keyframes coin-verdict-rise {
+  0% { transform: translateX(-50%) translateY(34px) scale(0.7); opacity: 0; }
+  100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
 }
 
 /* ---- 부르기 버튼 ---- */
