@@ -4,6 +4,7 @@ import {
   ANSWER_SECONDS,
   MAX_HINTS,
   ROUNDS,
+  RULES,
   WINDOW_SECONDS,
   advanceHint,
   answerTimeout,
@@ -308,7 +309,8 @@ export default function HiddenFormulaGame({ onExit }: { onExit: () => void }) {
             제시하면 그 두 수를 숨은 규칙에 대입한 <b>힌트</b>가 공개됩니다. 규칙을
             간파했다면 <b>버저</b>를 누르고 <b>{ANSWER_SECONDS}초 안에</b> 정답을 제시하세요 —
             정답 <b>+1점</b>, 오답이거나 시간을 넘기면 <b>−1점</b>(기회는 상대에게).
-            힌트는 문제당 최대 {MAX_HINTS}개, 총 {ROUNDS}라운드 승점 승부!
+            힌트는 문제당 최대 {MAX_HINTS}개, 총 {ROUNDS}라운드 승점 승부! 규칙 후보는{' '}
+            <b>{RULES.length}종</b> — 같은 규칙을 다시 만나기 어렵습니다.
           </p>
           <div className="setup-stats">
             <span className="extreme-tag">EXTREME AI</span>
