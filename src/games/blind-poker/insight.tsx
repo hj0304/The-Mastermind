@@ -7,16 +7,17 @@
  */
 
 import type { BpState, PlayerId } from './engine.ts';
+import type { SeatBadge } from '../shared/BettingTable.tsx';
 
 /** 좌석 상태 뱃지 — 차례이면 ACTIVE, 아니면 이번 핸드 마지막 행동 */
-export function seatBadge(s: BpState, seat: PlayerId): string | null {
+export function seatBadge(s: BpState, seat: PlayerId): SeatBadge | null {
   if (s.phase !== 'betting') return null;
-  if (s.toAct === seat) return 'ACTIVE';
+  if (s.toAct === seat) return { label: 'ACTIVE', tone: 'accent' };
   for (let i = s.actions.length - 1; i >= 0; i--) {
     const a = s.actions[i];
     if (a.player !== seat) continue;
-    if (a.action.type === 'raise') return 'RAISED';
-    if (a.action.type === 'call') return 'CALLED';
+    if (a.action.type === 'raise') return { label: 'RAISED', tone: 'warning' };
+    if (a.action.type === 'call') return { label: 'CALLED', tone: 'neutral' };
     return null;
   }
   return null;
@@ -50,14 +51,17 @@ export function accumulateTendency(t: Tendency, s: BpState, opp: PlayerId): void
   }
 }
 
-function Row({ k, v, ratio }: { k: string; v: string; ratio: number | null }) {
+function Row({ label, val, ratio, color }: { label: string; val: string; ratio: number | null; color: string }) {
+  const w = Math.round(Math.max(0, Math.min(1, ratio ?? 0)) * 100);
   return (
-    <div className="bt-tend-row">
-      <span className="k">{k}</span>
-      <span className="bt-tend-bar">
-        <span style={{ width: `${Math.round(Math.max(0, Math.min(1, ratio ?? 0)) * 100)}%` }} />
-      </span>
-      <span className="v">{v}</span>
+    <div className="bta-tend-row">
+      <div className="line">
+        <span>{label}</span>
+        <span className="val">{val}</span>
+      </div>
+      <div className="bta-tend-bar">
+        <span style={{ width: `${w}%`, background: color }} />
+      </div>
     </div>
   );
 }
@@ -68,14 +72,20 @@ export function TendencyPanel({ t }: { t: Tendency }) {
   const bluff = t.raisedShowdowns >= 2 ? t.raisedLowShowdowns / t.raisedShowdowns : null;
   const bluffLabel = bluff === null ? '표본 부족' : bluff > 0.5 ? 'HIGH' : bluff >= 0.25 ? 'MID' : 'LOW';
   return (
-    <>
-      <Row k="폴드율" v={foldRate === null ? '—' : `${Math.round(foldRate * 100)}%`} ratio={foldRate} />
+    <div className="bta-tend">
       <Row
-        k="평균 레이즈 폭"
-        v={avgRaise === null ? '—' : `+${avgRaise.toFixed(1)}`}
-        ratio={avgRaise === null ? null : avgRaise / 10}
+        label="폴드율"
+        val={foldRate === null ? '—' : `${Math.round(foldRate * 100)}%`}
+        ratio={foldRate}
+        color="#88AFCD"
       />
-      <Row k="블러프 추정" v={bluffLabel} ratio={bluff} />
-    </>
+      <Row
+        label="평균 레이즈 폭"
+        val={avgRaise === null ? '—' : `+${avgRaise.toFixed(1)}`}
+        ratio={avgRaise === null ? null : avgRaise / 10}
+        color="#6366F1"
+      />
+      <Row label="블러프 추정" val={bluffLabel} ratio={bluff} color="#D9AE5A" />
+    </div>
   );
 }

@@ -4,7 +4,7 @@ import { act, createGame, gameWinner, legalInfo, nextHand, potSize, seenCards } 
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import ChatPanel from '../../net/ChatPanel.tsx';
-import BettingTable, { ChipTray } from '../shared/BettingTable.tsx';
+import BettingTable, { ActionBtn, ChipTray, PlayCard, RailTitle } from '../shared/BettingTable.tsx';
 import { accumulateTendency, emptyTendency, seatBadge, TendencyPanel } from './insight.tsx';
 import type { Tendency } from './insight.tsx';
 import './blindpoker.css';
@@ -193,113 +193,156 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
   const seenCount = new Array<number>(11).fill(0);
   for (const c of seen) seenCount[c] += 1;
 
-  const amt = info ? Math.min(raiseAmt, info.maxRaise) : 1;
+  // 레이즈는 "총액" 개념 — raiseAmt(증분)을 저장하되 표시는 총액(상대 베팅 + 증분)
+  const amt = info ? Math.max(1, Math.min(raiseAmt, info.maxRaise)) : 1;
+  const oppBet = state.invested[opp];
+  const raiseTo = oppBet + amt;
+  const minTo = oppBet + 1;
+  const maxTo = info ? oppBet + info.maxRaise : minTo;
+  const raiseNow = () => doAct({ type: 'raise', amount: amt });
 
-  const rail = (
+  const lastOppRaise = [...state.actions]
+    .reverse()
+    .find((a) => a.player === opp && a.action.type === 'raise')?.action.amount;
+
+  const leftRail = (
     <>
-      <div className="bt-rail-sec">
-        <div className="bt-rail-title">카드 카운팅</div>
-        <div className="seen-grid">
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <div key={n} className={`seen-cell c${seenCount[n]}`}>
-              <span className="num">{n}</span>
-              <span className="cnt">{2 - seenCount[n]}</span>
-            </div>
-          ))}
-        </div>
-        <p className="bt-rail-note">
-          이번 덱에서 확인한 카드 — 남은 {20 - seen.length}장 + 내 이마. 흐린 칸은 소진된 숫자,
-          20장 소진 시 새 덱으로 리셋됩니다.
-        </p>
-      </div>
-      <div className="bt-rail-sec">
-        <div className="bt-rail-title">상대 성향</div>
-        <TendencyPanel t={tend} />
-      </div>
-      <div className="bt-rail-sec">
-        <div className="bt-rail-title">핸드 로그</div>
-        {state.history.length === 0 && <p className="bt-rail-note">아직 기록이 없습니다</p>}
-        <div className="bp-history">
-          {state.history.slice(-6).map((h, i) => {
-            const idx = state.history.length - Math.min(6, state.history.length) + i;
+      <RailTitle>핸드 로그</RailTitle>
+      {state.history.length === 0 ? (
+        <p className="bta-rail-note">아직 기록이 없습니다</p>
+      ) : (
+        <div className="bta-log">
+          {state.history.slice(-8).map((h, i) => {
+            const idx = state.history.length - Math.min(8, state.history.length) + i;
             const myCardKnown = h.outcome !== 'fold' || h.folder === me;
+            const what =
+              h.outcome === 'draw'
+                ? '무승부 이월'
+                : h.outcome === 'fold'
+                  ? `${h.folder === me ? '나' : '상대'} 폴드${h.penalty ? ' ⚠' : ''}`
+                  : '쇼다운';
             return (
-              <div
-                key={idx}
-                className={`hist-row ${h.winner === me ? 'win' : h.winner === opp ? 'lose' : 'draw'}`}
-              >
-                <span className="hist-no">#{idx + 1}</span>
-                <span>나 {myCardKnown ? h.cards[me] : '?'}</span>
-                <span>상대 {h.cards[opp]}</span>
-                <span className="hist-outcome">
-                  {h.outcome === 'draw'
-                    ? '무승부(이월)'
-                    : h.outcome === 'fold'
-                      ? `${h.folder === me ? '나' : '상대'} 폴드${h.penalty ? ' ⚠10페널티' : ''}`
-                      : '쇼다운'}
+              <div key={idx} className="bta-log-row">
+                <span className="no">#{idx + 1}</span>
+                <span className="what">
+                  나 {myCardKnown ? h.cards[me] : '?'} · 상대 {h.cards[opp]} · {what}
                 </span>
-                <span className="hist-pot">
-                  {h.winner !== undefined ? `${h.winner === me ? '+' : '-'}${h.potWon}` : ''}
+                <span className={`amt ${h.winner === me ? 'win' : h.winner === opp ? 'lose' : ''}`}>
+                  {h.winner !== undefined ? `${h.winner === me ? '+' : '−'}${h.potWon}` : '—'}
                 </span>
               </div>
             );
           })}
         </div>
+      )}
+      <div className="bta-rail-card">
+        <div className="head">이월 팟</div>
+        <span className="gold-num">{state.carried}</span>
+        <span className="cap">지난 무승부 이월</span>
       </div>
-      <div className="bt-rail-sec warn">
-        <div className="bt-rail-title">폴드 페널티</div>
-        <p className="bt-rail-note">
-          10을 들고 폴드하면 칩 10개를 추가로 잃습니다. 내 카드는 볼 수 없습니다 — 콜/폴드
-          판단에 참고하세요.
+    </>
+  );
+
+  const rightRail = (
+    <>
+      <RailTitle>카드 카운팅</RailTitle>
+      <div className="bta-count">
+        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+          <div key={n} className={`bta-count-cell c${seenCount[n]}`}>
+            {n}
+          </div>
+        ))}
+      </div>
+      <p className="bta-rail-note">
+        밝은 칸 = 이미 나온 숫자 (진할수록 2장 모두 소진). 남은 {20 - seen.length}장 + 내 이마,
+        20장 소진 시 새 덱으로 리셋됩니다.
+      </p>
+      <div className="bta-rail-hr" />
+      <RailTitle>상대 성향</RailTitle>
+      <TendencyPanel t={tend} />
+      <div className="bta-rail-card gold">
+        <div className="head">폴드 페널티</div>
+        <p>
+          10을 들고 폴드하면 칩 <strong>10개</strong>를 추가로 잃습니다. 내 카드는 볼 수 없습니다.
         </p>
       </div>
     </>
   );
 
-  const dock =
-    state.phase === 'betting' || state.phase === 'result' ? (
-      <>
-        {state.phase === 'betting' && !myTurn && <div className="bt-thinking">상대가 고민 중…</div>}
-        {state.phase === 'betting' && myTurn && info && (
-          <>
-            <div className="bt-situation">
-              {info.callCost > 0
-                ? `상대가 레이즈했습니다 — 콜하려면 +${info.callCost}`
-                : '베팅이 같습니다 — 콜하면 즉시 공개'}
-            </div>
-            {info.maxRaise >= 1 && (
-              <ChipTray
-                value={amt}
-                max={info.maxRaise}
-                onChange={setRaiseAmt}
-                onEnter={() => doAct({ type: 'raise', amount: amt })}
-              />
-            )}
-            <div className="bt-row">
-              <button className="bt-btn fold" onClick={() => doAct({ type: 'fold' })}>
-                폴드<small>10을 들고 폴드하면 −10</small>
-              </button>
-              <button className="bt-btn call" onClick={() => doAct({ type: 'call' })}>
-                {info.callCost > 0 ? `콜 +${info.callCost}` : '콜 (공개)'}
-              </button>
-              {info.maxRaise >= 1 && (
-                <button className="bt-btn raise" onClick={() => doAct({ type: 'raise', amount: amt })}>
-                  {amt === info.maxRaise ? `올인 +${amt}` : `레이즈 +${amt}`}
-                </button>
-              )}
-            </div>
-          </>
-        )}
-        {state.phase === 'result' && lastHand && (
-          <div className="bt-result">
-            <HandResultView hand={lastHand} me={me} />
-            <button className="primary-btn" onClick={proceedNextHand}>
-              다음 핸드
-            </button>
+  const statusLine =
+    state.phase === 'betting' && myTurn && info
+      ? lastOppRaise !== undefined
+        ? `상대가 ${lastOppRaise} 레이즈. 응답하세요.`
+        : info.callCost > 0
+          ? `콜하려면 ${info.callCost} 필요합니다.`
+          : '베팅이 같습니다 — 콜하면 즉시 공개됩니다.'
+      : undefined;
+
+  const actionBar =
+    state.phase === 'betting' ? (
+      !myTurn ? (
+        <div className="bta-thinking">상대가 고민 중…</div>
+      ) : info ? (
+        <div className="bta-actions">
+          <div className="bta-btn-grid">
+            <ActionBtn
+              variant="secondary"
+              caption="10 보유 시 −10"
+              captionTone="gold"
+              onClick={() => doAct({ type: 'fold' })}
+            >
+              폴드
+            </ActionBtn>
+            <ActionBtn
+              variant={info.callCost > 0 ? 'primary' : 'secondary'}
+              caption={info.callCost > 0 ? `총 ${oppBet}까지` : '즉시 쇼다운'}
+              onClick={() => doAct({ type: 'call' })}
+            >
+              {info.callCost > 0 ? `콜 ${info.callCost}` : '콜 (공개)'}
+            </ActionBtn>
+            <ActionBtn
+              variant="accent"
+              caption={`최소 ${minTo}`}
+              onClick={raiseNow}
+              disabled={info.maxRaise < 1}
+            >
+              레이즈 {raiseTo}
+            </ActionBtn>
+            <ActionBtn
+              variant="gold"
+              caption={`최대 ${maxTo}`}
+              onClick={() => doAct({ type: 'raise', amount: info.maxRaise })}
+              disabled={info.maxRaise < 1}
+            >
+              올인
+            </ActionBtn>
           </div>
-        )}
-      </>
+          {info.maxRaise >= 1 && (
+            <ChipTray
+              value={raiseTo}
+              min={minTo}
+              max={maxTo}
+              onChange={(t) => setRaiseAmt(t - oppBet)}
+              onEnter={raiseNow}
+            />
+          )}
+        </div>
+      ) : undefined
+    ) : state.phase === 'result' && lastHand ? (
+      <div className="bta-result">
+        <HandResultView hand={lastHand} me={me} />
+        <button className="primary-btn" onClick={proceedNextHand}>
+          다음 핸드
+        </button>
+      </div>
     ) : undefined;
+
+  const turnBadge =
+    state.phase === 'betting'
+      ? myTurn
+        ? { label: '내 차례', tone: 'accent' as const }
+        : { label: '대기', tone: 'neutral' as const }
+      : { label: '핸드 종료', tone: 'neutral' as const };
 
   return (
     <div className="bp-root bp-wide">
@@ -310,35 +353,30 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
         방 {room.code} · {room.isHost ? '호스트' : '게스트'}
       </div>
 
-      {/* A안 테이블: 좌석 패널 → 베팅 레인 → 프레임 팟 축 + 우측 정보 레일 + 액션 독 */}
+      {/* A안 테이블 보드: 헤더 → 3컬럼(핸드 로그 | 중앙 축 | 카운팅·성향) → 액션 바 */}
       <BettingTable
+        title="블라인드 포커 · 온라인"
+        handNo={state.handNo}
+        deckInfo={`${20 - seen.length}/20`}
+        turn={turnBadge}
         opp={{ name: '상대', stack: state.stacks[opp], badge: seatBadge(state, opp) }}
         me={{ name: '나', stack: state.stacks[me], badge: seatBadge(state, me) }}
         oppBet={state.invested[opp]}
         myBet={state.invested[me]}
         pot={state.phase === 'betting' ? potSize(state) : lastHand?.potWon ?? 0}
-        handNo={state.handNo}
-        potSub={
-          state.phase === 'betting'
-            ? `본 라운드 ${state.invested[0] + state.invested[1]}${state.carried > 0 ? ` · 이월 +${state.carried}` : ''}`
-            : undefined
-        }
-        oppCard={
-          <div className="card-slot">
-            <div className="slot-label">상대의 이마</div>
-            <div className="pcard face">{state.cards[opp]}</div>
-          </div>
-        }
+        carried={state.carried}
+        oppCard={<PlayCard value={state.cards[opp]} caption="내게만 보임" />}
         myCard={
-          <div className="card-slot">
-            <div className="slot-label">내 이마 (나만 못 봄)</div>
-            <div className={view.myCardShown ? 'pcard face small' : 'pcard hidden-card small'}>
-              {view.myCardShown ? state.cards[me] : '?'}
-            </div>
-          </div>
+          view.myCardShown ? (
+            <PlayCard value={state.cards[me]} caption="공개됨" />
+          ) : (
+            <PlayCard hidden caption="나만 못 봄" />
+          )
         }
-        rail={rail}
-        dock={dock}
+        leftRail={leftRail}
+        rightRail={rightRail}
+        statusLine={statusLine}
+        actionBar={actionBar}
       />
 
       {state.phase === 'gameover' && (
