@@ -296,7 +296,9 @@ export function ChipTray({
     <div className="bta-tray">
       <div className="bta-tray-head">
         <span className="k">칩 트레이 — 탭해서 쌓기</span>
-        <span className="v">{value}</span>
+        <div className="bta-tray-stepper">
+          <NumberStepper value={value} min={min} max={max} onChange={onChange} onEnter={onEnter} />
+        </div>
       </div>
       <div className="bta-tray-row">
         {[...DEN].reverse().map((d) => (
@@ -317,9 +319,6 @@ export function ChipTray({
         <button className="bta-tray-pill" onClick={() => onChange(min)}>
           초기화
         </button>
-        <div className="bta-tray-stepper">
-          <NumberStepper value={value} min={min} max={max} onChange={onChange} onEnter={onEnter} />
-        </div>
       </div>
     </div>
   );

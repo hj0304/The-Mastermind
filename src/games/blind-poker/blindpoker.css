@@ -11,6 +11,15 @@
 .bp-root.bp-wide {
   max-width: 1200px;
 }
+/* 데스크톱: 한 화면 수용 — 보드가 남은 높이를 채우고 스크롤 없이 플레이 */
+@media (min-width: 880px) {
+  .bp-root.bp-wide {
+    height: 100dvh;
+    overflow: hidden;
+    gap: 10px;
+    padding-bottom: 12px;
+  }
+}
 
 /* 설정 화면 */
 .bp-setup {
