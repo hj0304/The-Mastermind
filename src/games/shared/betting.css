@@ -112,11 +112,37 @@
 .bta-grid {
   display: grid;
   grid-template-columns: 252px minmax(0, 1fr) 252px;
-  min-height: 480px;
   background-color: #08080a;
   background-image:
     repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 48px),
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 48px);
+}
+/* 데스크톱: 보드가 화면 높이를 채우고, 넘치는 건 레일 내부 스크롤로만 */
+@media (min-width: 880px) {
+  .bta-board {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .bta-header,
+  .bta-actionbar {
+    flex: none;
+  }
+  .bta-grid {
+    flex: 1;
+    min-height: 0;
+  }
+  .bta-rail {
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .bta-center {
+    overflow-y: auto;
+    min-height: 0;
+    /* safe: 내용이 넘칠 땐 상단 기준으로 스크롤 (미지원 브라우저는 flex-start 유지) */
+    justify-content: safe center;
+  }
 }
 .bta-rail {
   padding: 18px;
@@ -307,7 +333,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 22px 24px 26px;
+  padding: 14px 24px 16px;
   min-width: 0;
 }
 
@@ -442,8 +468,8 @@
   display: flex;
   align-items: flex-end;
   gap: 14px;
-  min-height: 78px;
-  margin: 12px 0 10px;
+  min-height: 54px;
+  margin: 7px 0;
 }
 .bta-betrow-info {
   display: flex;
@@ -476,8 +502,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px 44px;
+  gap: 6px;
+  padding: 12px 40px;
   border-radius: 20px;
   border: 1px solid rgba(99, 102, 241, 0.3);
   background: rgba(99, 102, 241, 0.055);
@@ -533,10 +559,10 @@
 .bta-actionbar {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: #0c0c0f;
-  padding: 14px 24px 18px;
+  padding: 12px 20px 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 .bta-status {
   font-size: 12px;
@@ -629,8 +655,9 @@
 }
 .bta-tray-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
+  gap: 10px;
 }
 .bta-tray-head .k {
   letter-spacing: 0.12em;
@@ -702,7 +729,7 @@
   color: #b4b5f9;
 }
 .bta-tray-stepper {
-  margin-left: auto;
+  flex: none;
 }
 
 /* 결과 배너 (핸드 종료 시 액션 바 자리) */
@@ -732,6 +759,80 @@
   }
   50% {
     opacity: 0.9;
+  }
+}
+
+/* ---------- 낮은 화면 (데스크톱, 높이 840px 이하): 한 단계 더 압축 ---------- */
+@media (min-width: 880px) and (max-height: 840px) {
+  .bta-header {
+    height: 40px;
+  }
+  .bta-center {
+    padding: 8px 20px;
+  }
+  .bta-seat {
+    padding: 7px 14px;
+    gap: 12px;
+  }
+  .bta-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 13px;
+  }
+  .bta-seat-name {
+    font-size: 14px;
+  }
+  .bta-seat-stack .v {
+    font-size: 15px;
+  }
+  .bta-card {
+    width: 54px;
+    height: 70px;
+    font-size: 28px;
+    border-radius: 10px;
+  }
+  .bta-card.hidden {
+    font-size: 26px;
+  }
+  .bta-betrow {
+    min-height: 38px;
+    margin: 5px 0;
+  }
+  .bta-betrow-amt {
+    font-size: 22px;
+  }
+  .bta-pot {
+    padding: 6px 28px;
+    gap: 3px;
+  }
+  .bta-pot-num {
+    font-size: 36px;
+  }
+  .bta-actionbar {
+    padding: 8px 20px 10px;
+    gap: 8px;
+  }
+  .bta-abtn {
+    height: 44px;
+    font-size: 14px;
+  }
+  .bta-tray-chip {
+    width: 44px;
+    height: 44px;
+    font-size: 12px;
+  }
+  .bta-tray-pill {
+    height: 34px;
+  }
+  .bta-tray-head .v {
+    font-size: 20px;
+  }
+  .bta-status {
+    font-size: 11px;
+  }
+  .bta-rail {
+    padding: 12px 14px;
+    gap: 10px;
   }
 }
 
@@ -825,8 +926,5 @@
   .bta-tray-chip {
     width: 46px;
     height: 46px;
-  }
-  .bta-tray-stepper {
-    margin-left: 0;
   }
 }
