@@ -1,3 +1,5 @@
+/* 블라인드 포커 — 설정/대기 화면 (플레이 화면은 shared/pokerui.css) */
+
 .bp-root {
   max-width: 560px;
   margin: 0 auto;
@@ -6,19 +8,6 @@
   flex-direction: column;
   gap: 14px;
   min-height: 100dvh;
-}
-/* 플레이 화면: A안 보드 (3컬럼 테이블) 폭 */
-.bp-root.bp-wide {
-  max-width: 1200px;
-}
-/* 데스크톱: 한 화면 수용 — 보드가 남은 높이를 채우고 스크롤 없이 플레이 */
-@media (min-width: 880px) {
-  .bp-root.bp-wide {
-    height: 100dvh;
-    overflow: hidden;
-    gap: 10px;
-    padding-bottom: 12px;
-  }
 }
 
 /* 설정 화면 */
@@ -35,55 +24,4 @@
   font-size: 14px;
   max-width: 440px;
   line-height: 1.7;
-}
-.bp-diff-select { display: flex; gap: 10px; }
-
-.vs { color: var(--text-dim); font-weight: 800; }
-
-.pcard {
-  width: 74px;
-  height: 104px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 38px;
-  font-weight: 800;
-}
-.pcard.small { width: 52px; height: 72px; font-size: 26px; }
-.pcard.face {
-  background: #f4f0e6;
-  color: #1a1204;
-  border: 2px solid #fff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-}
-.pcard.hidden-card {
-  background: var(--card-back, repeating-linear-gradient(45deg, #2a3242, #2a3242 8px, #1e2534 8px, #1e2534 16px));
-  color: var(--accent);
-  border: 2px solid var(--border);
-}
-/* 핸드 결과 (액션 독 안) */
-.hand-result-view { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.reveal { display: flex; align-items: center; gap: 14px; }
-.result-text { font-size: 14px; text-align: center; }
-
-/* 종료 오버레이 */
-.bp-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--overlay-bg, rgba(10, 12, 16, 0.75));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
-.bp-endcard {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 36px 48px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
 }

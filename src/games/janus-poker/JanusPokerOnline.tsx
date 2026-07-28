@@ -4,7 +4,7 @@ import { applyAction, callCost, createGame, maxLevelFor, nextHand } from './engi
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import ChatPanel from '../../net/ChatPanel.tsx';
-import NumberStepper from '../shared/NumberStepper.tsx';
+import PokerLayout, { BetSlider, PkFlipCard, PkOverlay, PkResult, useMood } from '../shared/pokerui.tsx';
 import './janus.css';
 import '../../net/online.css';
 
@@ -48,6 +48,7 @@ export default function JanusPokerOnline({ room, onExit }: { room: NetRoom; onEx
   const [pickedFace, setPickedFace] = useState<Face | null>(null);
   const [level, setLevel] = useState(1);
   const [peek, setPeek] = useState(false);
+  const [mood, setMood] = useMood();
   const [oppLeft, setOppLeft] = useState(false);
   /** 선공 동전 - 양쪽이 같은 결과를 본다 */
   const [toss, setToss] = useState<PlayerId | null>(null);
@@ -134,13 +135,10 @@ export default function JanusPokerOnline({ room, onExit }: { room: NetRoom; onEx
   const s = view?.s ?? null;
   const myTurn = !!s && s.phase === 'act' && s.turn === me && !s.result;
   const firstAction = myTurn && s!.faces[me] === null;
-  const minL = s ? Math.max(1, s.level) : 1;
-  const cap = s && myTurn ? maxLevelFor(s, me, pickedFace ?? s.faces[me] ?? 'front') : 0;
-
-  useEffect(() => {
-    if (!s) return;
-    setLevel((l) => Math.min(Math.max(l, minL), Math.max(cap, minL)));
-  }, [s, minL, cap]);
+  const minL = s ? (firstAction ? Math.max(1, s.level) : s.level + 1) : 1;
+  const cap =
+    s && myTurn ? maxLevelFor(s, me, pickedFace ?? s.faces[me] ?? 'front') : 0;
+  const lv = Math.min(Math.max(level, minL), Math.max(cap, minL));
 
   function exit() {
     room.leave();
@@ -156,7 +154,10 @@ export default function JanusPokerOnline({ room, onExit }: { room: NetRoom; onEx
     } else {
       room.send({ t: 'act', a } satisfies NetMsg);
     }
-    if (a.kind !== 'next') setPickedFace(null);
+    if (a.kind !== 'next') {
+      setPickedFace(null);
+      setLevel(1);
+    }
   }
 
   if (toss !== null) {
@@ -188,200 +189,188 @@ export default function JanusPokerOnline({ room, onExit }: { room: NetRoom; onEx
   const showResult = s.phase !== 'act' && r !== null;
   const oppBackRevealed = view!.oppBackRevealed;
 
+  const resultText = !r
+    ? ''
+    : r.reason === 'fold'
+      ? r.folder === me
+        ? `폴드 — 상대가 팟 ${r.pot}칩 획득${r.penalty ? ` + 양면 페널티 ${r.penalty}` : ''}`
+        : `상대 폴드 — 팟 ${r.pot}칩 획득!${r.penalty ? ` + 양면 페널티 ${r.penalty}` : ''}`
+      : r.reason === 'showdown'
+        ? r.winner === null
+          ? `무승부 (${r.values[me]} : ${r.values[opp]}) — 팟 ${r.pot}칩 이월`
+          : `${r.values[me]} : ${r.values[opp]} — ${r.winner === me ? '승리! 팟' : '상대가 팟'} ${r.pot}칩`
+        : r.reason === 'both-win'
+          ? r.winner === me
+            ? `양면베팅 성공! 팟 ${r.pot}칩 + 페널티 ${r.penalty}칩`
+            : `상대 양면베팅 성공… 팟 ${r.pot}칩 + 페널티 ${r.penalty}칩`
+          : r.winner === me
+            ? `상대 양면베팅 실패! 팟 ${r.pot}칩 획득`
+            : `양면베팅 실패… 상대가 팟 ${r.pot}칩 획득`;
+
+  const panel = (
+    <>
+      {s.phase === 'act' && !myTurn && !s.result && (
+        <div className="pk-thinking">상대가 고민 중…</div>
+      )}
+      {myTurn && firstAction && (
+        <>
+          <div className="pk-status">
+            {s.faces[opp]
+              ? `상대가 ${FACE_NAME[s.faces[opp]!]}에 레벨 ${s.level} 베팅 — 응수하세요`
+              : '베팅할 면을 선언하고 칩을 거세요'}
+          </div>
+          <div className="pk-faces">
+            <button
+              className={`pk-seg ${pickedFace === 'front' ? 'on' : ''}`}
+              onClick={() => setPickedFace('front')}
+            >
+              앞면 {my.front}
+            </button>
+            <button
+              className={`pk-seg ${pickedFace === 'back' ? 'on' : ''}`}
+              onClick={() => setPickedFace('back')}
+            >
+              뒷면 {my.back}
+            </button>
+            <button
+              className={`pk-seg gold ${pickedFace === 'both' ? 'on' : ''}`}
+              disabled={s.faces[opp] === 'both'}
+              onClick={() => setPickedFace('both')}
+            >
+              양면 ×2
+            </button>
+          </div>
+          {pickedFace !== null && cap >= minL && (
+            <BetSlider value={lv} min={minL} max={cap} onChange={setLevel} times2={pickedFace === 'both'} />
+          )}
+          <div className="pk-actions two">
+            <button className="pk-btn fold" onClick={() => act({ kind: 'fold' })}>
+              포기{s.faces[opp] === 'both' && ' (−10)'}
+            </button>
+            <button
+              className="pk-btn ac"
+              disabled={!pickedFace || cap < minL}
+              onClick={() => pickedFace && act({ kind: 'bet', face: pickedFace, level: lv })}
+            >
+              {s.faces[opp] !== null && lv === s.level
+                ? '콜'
+                : `베팅 ${lv}${pickedFace === 'both' ? ' ×2' : ''}`}
+            </button>
+          </div>
+        </>
+      )}
+      {myTurn && !firstAction && (
+        <>
+          <div className="pk-status">
+            상대가 레벨 {s.level}(으)로 올렸습니다 — 콜 비용 {callCost(s, me)}
+          </div>
+          {cap > s.level && (
+            <BetSlider value={lv} min={minL} max={cap} onChange={setLevel} times2={s.faces[me] === 'both'} />
+          )}
+          <div className="pk-actions three">
+            <button className="pk-btn fold" onClick={() => act({ kind: 'fold' })}>
+              폴드{s.faces[opp] === 'both' && ' (−10)'}
+            </button>
+            <button
+              className="pk-btn solid"
+              disabled={callCost(s, me) > s.stacks[me]}
+              onClick={() => act({ kind: 'call' })}
+            >
+              콜 +{callCost(s, me)}
+            </button>
+            <button
+              className="pk-btn ac"
+              disabled={cap <= s.level}
+              onClick={() => act({ kind: 'raise', level: lv })}
+            >
+              레이즈 {lv}
+            </button>
+          </div>
+        </>
+      )}
+      {showResult && (
+        <PkResult
+          left={r!.values[opp] !== null ? String(r!.values[opp]) : '?'}
+          right={r!.values[me] !== null ? String(r!.values[me]) : '?'}
+          text={resultText}
+          onNext={s.phase === 'handover' ? () => act({ kind: 'next' }) : undefined}
+        />
+      )}
+    </>
+  );
+
+  const badgeOf = (f: Face | null, gold: boolean) =>
+    f ? { text: `${FACE_NAME[f]} 베팅`, gold: gold || f === 'both' } : null;
+
   return (
-    <div className="jp-root">
-      <GameHeader onExit={exit} />
-
-      <div className="online-status">
-        <span className={`dot ${oppLeft ? 'off' : ''}`} />
-        방 {room.code} · {room.isHost ? '호스트' : '게스트'}
-      </div>
-
-      <div className="jp-status">
-        <div className="jp-stack me">나 <b>{s.stacks[me]}</b>칩</div>
-        <div className="jp-pot">
-          <span className="pot-label">팟</span>
-          <b>{s.phase === 'act' ? s.paid[0] + s.paid[1] + s.carry : s.carry}</b>
-          {s.carry > 0 && <span className="carry">이월 {s.carry} 포함</span>}
-          <span className="hand-no">#{s.handNo} · 선 {s.first === me ? '나' : '상대'}</span>
-        </div>
-        <div className="jp-stack ai">상대 <b>{s.stacks[opp]}</b>칩</div>
-      </div>
-
-      {/* 상대 카드 */}
-      <div className="jp-side ai-side">
-        <JanusCard
+    <PokerLayout
+      mood={mood}
+      onMood={setMood}
+      header={
+        <>
+          <GameHeader onExit={exit} />
+          <div className="online-status">
+            <span className={`dot ${oppLeft ? 'off' : ''}`} />
+            방 {room.code} · {room.isHost ? '호스트' : '게스트'}
+          </div>
+        </>
+      }
+      handNo={s.handNo}
+      opp={{
+        name: '상대',
+        turn: s.phase === 'act' && s.turn === opp,
+        stack: s.stacks[opp],
+        badge: badgeOf(s.faces[opp], false),
+      }}
+      me={{
+        name: '나',
+        turn: s.phase === 'act' && s.turn === me,
+        stack: s.stacks[me],
+        badge: badgeOf(s.faces[me], true),
+      }}
+      oppCard={
+        <PkFlipCard
           key={`opp-${s.handNo}`}
           front={oppCard.front}
           back={oppBackRevealed ? oppCard.back : null}
           flipped={oppBackRevealed}
-          owner="ai"
+          caption="앞면 공개 · 뒷면 비밀"
         />
-        <div className="jp-side-info">
-          <span className="side-name">상대</span>
-          {s.faces[opp] && (
-            <span className={`face-badge ${s.faces[opp] === 'both' ? 'both' : ''}`}>
-              {FACE_NAME[s.faces[opp]!]} 베팅
-              {s.faces[opp] === 'front' && ` (${oppCard.front})`}
-            </span>
-          )}
-          {!myTurn && s.phase === 'act' && !s.result && <span className="thinking">고민 중…</span>}
-        </div>
-      </div>
-
-      {/* 내 카드 */}
-      <div className="jp-side my-side">
-        <JanusCard
+      }
+      myCard={
+        <PkFlipCard
           key={`my-${s.handNo}`}
           front={my.front}
           back={my.back}
           flipped={peek}
-          owner="me"
+          onClick={() => setPeek((p) => !p)}
+          caption="카드를 탭해 뒷면 확인"
+          captionAccent
         />
-        <div className="jp-side-info">
-          <span className="side-name">나</span>
-          <button className="peek-btn" onClick={() => setPeek((p) => !p)}>
-            {peek ? '앞면 보기' : '뒷면 확인 (비밀)'}
-          </button>
-          {s.faces[me] && (
-            <span className={`face-badge ${s.faces[me] === 'both' ? 'both' : ''}`}>
-              {FACE_NAME[s.faces[me]!]} 베팅
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* 조작/결과 패널 */}
-      <div className="jp-panel">
-        {myTurn && firstAction && (
-          <>
-            <span className="jp-note">
-              {s.faces[opp]
-                ? `상대: ${FACE_NAME[s.faces[opp]!]}에 레벨 ${s.level} 베팅 — 응수하세요`
-                : '베팅할 면을 고르세요 (선언은 공개됩니다)'}
-            </span>
-            <div className="jp-face-btns">
-              <button
-                className={`jp-face ${pickedFace === 'front' ? 'on' : ''}`}
-                onClick={() => setPickedFace('front')}
-              >
-                앞면 <b>{my.front}</b>
-              </button>
-              <button
-                className={`jp-face ${pickedFace === 'back' ? 'on' : ''}`}
-                onClick={() => setPickedFace('back')}
-              >
-                뒷면 <b>{my.back}</b> <small>비밀</small>
-              </button>
-              {s.faces[opp] !== 'both' && (
-                <button
-                  className={`jp-face both ${pickedFace === 'both' ? 'on' : ''}`}
-                  onClick={() => setPickedFace('both')}
-                >
-                  양면베팅 <small>2배 지불</small>
-                </button>
-              )}
-            </div>
-            {pickedFace && cap >= minL && (
-              <LevelPicker level={level} setLevel={setLevel} min={minL} max={cap} both={pickedFace === 'both'} />
-            )}
-            <div className="jp-btns">
-              <button className="action-btn fold" onClick={() => act({ kind: 'fold' })}>
-                포기{s.faces[opp] === 'both' && ' (−10)'}
-              </button>
-              <button
-                className="action-btn call"
-                disabled={!pickedFace || cap < minL}
-                onClick={() => pickedFace && act({ kind: 'bet', face: pickedFace, level })}
-              >
-                {s.faces[opp] !== null && level === s.level ? '콜' : '베팅'} ({level}
-                {pickedFace === 'both' ? '×2' : ''})
-              </button>
-            </div>
-          </>
-        )}
-        {myTurn && !firstAction && (
-          <>
-            <span className="jp-note">
-              상대가 레벨 {s.level}(으)로 올렸습니다 — 콜 비용 <b>{callCost(s, me)}</b>
-            </span>
-            {cap > s.level && (
-              <LevelPicker level={level} setLevel={setLevel} min={s.level + 1} max={cap} both={s.faces[me] === 'both'} />
-            )}
-            <div className="jp-btns">
-              <button className="action-btn fold" onClick={() => act({ kind: 'fold' })}>
-                폴드{s.faces[opp] === 'both' && ' (−10)'}
-              </button>
-              <button
-                className="action-btn call"
-                disabled={callCost(s, me) > s.stacks[me]}
-                onClick={() => act({ kind: 'call' })}
-              >
-                콜 (+{callCost(s, me)})
-              </button>
-              {cap > s.level && (
-                <button
-                  className="action-btn raise"
-                  disabled={level <= s.level}
-                  onClick={() => act({ kind: 'raise', level })}
-                >
-                  레이즈 ({level})
-                </button>
-              )}
-            </div>
-          </>
-        )}
-        {showResult && (
-          <>
-            <span className="jp-result-line">
-              {r!.reason === 'fold' &&
-                (r!.folder === me
-                  ? `폴드 — 상대가 팟 ${r!.pot}칩 획득${r!.penalty ? ` + 양면 페널티 ${r!.penalty}` : ''}`
-                  : `상대 폴드 — 팟 ${r!.pot}칩 획득!${r!.penalty ? ` + 양면 페널티 ${r!.penalty}` : ''}`)}
-              {r!.reason === 'showdown' &&
-                (r!.winner === null
-                  ? `무승부 (${r!.values[me]} : ${r!.values[opp]}) — 팟 ${r!.pot}칩 이월`
-                  : `${r!.values[me]} : ${r!.values[opp]} — ${r!.winner === me ? '승리! 팟' : '상대가 팟'} ${r!.pot}칩`)}
-              {r!.reason === 'both-win' &&
-                (r!.winner === me
-                  ? `양면베팅 성공! 팟 ${r!.pot}칩 + 페널티 ${r!.penalty}칩`
-                  : `상대 양면베팅 성공… 팟 ${r!.pot}칩 + 페널티 ${r!.penalty}칩`)}
-              {r!.reason === 'both-lose' &&
-                (r!.winner === me
-                  ? `상대 양면베팅 실패! 팟 ${r!.pot}칩 획득`
-                  : `양면베팅 실패… 상대가 팟 ${r!.pot}칩 획득`)}
-            </span>
-            {s.phase === 'handover' && (
-              <button className="primary-btn" onClick={() => act({ kind: 'next' })}>
-                다음 핸드
-              </button>
-            )}
-          </>
-        )}
-        {!myTurn && !showResult && <span className="jp-note dim"> </span>}
-      </div>
-
+      }
+      oppBet={s.paid[opp]}
+      myBet={s.paid[me]}
+      pot={s.phase === 'act' ? s.paid[0] + s.paid[1] + s.carry : r?.pot ?? 0}
+      carried={s.carry}
+      panel={panel}
+    >
       {s.result && (
-        <div className="jp-overlay">
-          <div className="jp-endcard">
-            <h2>{s.result.winner === me ? '🏆 승리!' : '패배…'}</h2>
-            <p>
-              {s.result.winner === me ? '상대의 칩을 모두 털었습니다' : '칩을 모두 잃었습니다'}
-            </p>
-            <div className="end-actions">
-              {room.isHost ? (
-                <button className="primary-btn" onClick={() => hostApply(createGame(tossFirst()))}>
-                  다시 대전
-                </button>
-              ) : (
-                <p className="online-hint">호스트가 재대결을 시작할 수 있습니다</p>
-              )}
-              <button className="ghost-btn" onClick={exit}>로비로</button>
-            </div>
+        <PkOverlay
+          title={s.result.winner === me ? '🏆 승리!' : '패배…'}
+          sub={s.result.winner === me ? '상대의 칩을 모두 털었습니다' : '칩을 모두 잃었습니다'}
+        >
+          <div className="end-actions">
+            {room.isHost ? (
+              <button className="primary-btn" onClick={() => hostApply(createGame(tossFirst()))}>
+                다시 대전
+              </button>
+            ) : (
+              <p className="online-hint">호스트가 재대결을 시작할 수 있습니다</p>
+            )}
+            <button className="ghost-btn" onClick={exit}>로비로</button>
           </div>
-        </div>
+        </PkOverlay>
       )}
-
       {oppLeft && !s.result && (
         <div className="online-notice-overlay">
           <div className="online-notice">
@@ -391,70 +380,7 @@ export default function JanusPokerOnline({ room, onExit }: { room: NetRoom; onEx
         </div>
       )}
       <ChatPanel room={room} />
-    </div>
-  );
-}
-
-function JanusCard({
-  front,
-  back,
-  flipped,
-  owner,
-}: {
-  front: number;
-  back: number | null;
-  flipped: boolean;
-  owner: 'me' | 'ai';
-}) {
-  return (
-    <div className={`jcard ${owner}`}>
-      <div className={`jcard-inner ${flipped ? 'flipped' : ''}`}>
-        <div className="jcard-face jcard-front">
-          <span className="corner">앞</span>
-          <span className="val">{front}</span>
-        </div>
-        <div className={`jcard-face jcard-back ${back === null ? 'hidden-back' : ''}`}>
-          <span className="corner">뒤</span>
-          <span className="val">{back === null ? '?' : back}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LevelPicker({
-  level,
-  setLevel,
-  min,
-  max,
-  both,
-}: {
-  level: number;
-  setLevel: (fn: (l: number) => number) => void;
-  min: number;
-  max: number;
-  both: boolean;
-}) {
-  return (
-    <div className="jp-level">
-      <span className="level-num">
-        레벨
-        {both && <small> (지불 {level * 2})</small>}
-      </span>
-      <NumberStepper value={level} min={min} max={max} onChange={(v) => setLevel(() => v)} />
-      <div className="quick">
-        {[min, min + 2, min + 5]
-          .filter((v, i, arr) => v <= max && arr.indexOf(v) === i)
-          .map((v) => (
-            <button key={v} className={v === level ? 'on' : ''} onClick={() => setLevel(() => v)}>
-              {v}
-            </button>
-          ))}
-        <button className={level === max ? 'on' : ''} onClick={() => setLevel(() => max)}>
-          맥스
-        </button>
-      </div>
-    </div>
+    </PokerLayout>
   );
 }
 
