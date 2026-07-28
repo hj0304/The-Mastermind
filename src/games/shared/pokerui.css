@@ -1,0 +1,550 @@
+/* 포커류 베팅 게임 공용 UI — "포커 리디자인" 시안 (pokerui.tsx)
+ * 무드 변수(--bg/--panel/--ink/--ac/--gold…)는 pk-scope 인라인 스타일로 주입된다.
+ * 숫자는 Space Grotesk(글래스 테마에서 이미 로드) + 모노 폴백. */
+
+.pk-scope {
+  --pk-num: 'Space Grotesk', 'Cascadia Mono', ui-monospace, monospace;
+  display: contents;
+}
+.pk-bg {
+  min-height: 100dvh;
+  background-color: var(--bg);
+  background-image: radial-gradient(900px 480px at 50% -12%, var(--glow), transparent 65%);
+  color: var(--ink);
+  display: flex;
+  justify-content: center;
+}
+.pk-col {
+  width: min(100%, 470px);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  gap: 10px;
+}
+.pk-col .game-header {
+  margin: 0 -4px;
+}
+
+/* HAND 라벨 */
+.pk-handrow {
+  text-align: right;
+  font-family: var(--pk-num);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  padding: 0 2px;
+}
+
+/* 좌석 행 */
+.pk-seat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+.pk-seat-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pk-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ac);
+  box-shadow: 0 0 10px var(--ac);
+}
+.pk-seat-name {
+  font-weight: 800;
+  font-size: 15px;
+}
+.pk-face-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--ac);
+  color: var(--ac);
+}
+.pk-face-badge.gold {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.pk-seat-right {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.pk-seat-right .k {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+}
+.pk-seat-right .v {
+  font-family: var(--pk-num);
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 중앙 축 */
+.pk-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 6px 0;
+  min-height: 0;
+}
+.pk-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.pk-bet-pill {
+  font-family: var(--pk-num);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--dim);
+}
+.pk-bet-pill b {
+  color: var(--ink);
+  font-weight: 700;
+}
+.pk-pot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.pk-pot-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--dim);
+}
+.pk-pot-num {
+  font-family: var(--pk-num);
+  font-size: 54px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.pk-pot-carry {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+/* 카드 */
+.pk-cardwrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.pk-caption {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+}
+.pk-caption.accent {
+  color: var(--ac);
+}
+.pk-card {
+  width: 94px;
+  height: 130px;
+  border-radius: 14px;
+  border: 1.5px solid var(--cardLine);
+  background: var(--cardBg);
+  box-shadow: var(--cardGlow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--pk-num);
+  font-size: 52px;
+  font-weight: 700;
+  color: var(--cardInk);
+}
+.pk-card.hidden {
+  border: 1.5px dashed var(--line);
+  background: var(--cardBack);
+  box-shadow: none;
+  font-size: 46px;
+  color: var(--dim);
+}
+
+/* 양면 카드 (플립) */
+.pk-flip {
+  width: 94px;
+  height: 130px;
+  perspective: 700px;
+}
+.pk-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4, 1.4, 0.6, 1);
+}
+.pk-flip-inner.flipped {
+  transform: rotateY(180deg);
+}
+.pk-flip-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--pk-num);
+  font-size: 48px;
+  font-weight: 700;
+  backface-visibility: hidden;
+}
+.pk-flip-face .corner {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.45;
+}
+.pk-flip-face.front {
+  border: 1.5px solid var(--cardLine);
+  background: var(--cardBg);
+  box-shadow: var(--cardGlow);
+  color: var(--cardInk);
+}
+.pk-flip-face.back {
+  border: 1.5px solid var(--line);
+  background: var(--cardBack);
+  color: var(--ink);
+  transform: rotateY(180deg);
+}
+
+/* 액션 패널 */
+.pk-panel {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--panel);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  justify-content: center;
+  min-height: 148px;
+  box-sizing: border-box;
+}
+.pk-status {
+  text-align: center;
+  font-size: 12px;
+  color: var(--dim);
+}
+.pk-thinking {
+  text-align: center;
+  font-size: 13px;
+  color: var(--dim);
+  animation: pkBreathe 1.8s ease-in-out infinite;
+  padding: 10px 0;
+}
+@keyframes pkBreathe {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* 면 선언 세그먼트 (야누스) */
+.pk-faces {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.pk-seg {
+  height: 46px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: transparent;
+}
+.pk-seg.on {
+  border-color: var(--ac);
+  color: var(--ac);
+  background: var(--panel);
+}
+.pk-seg.gold.on {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.pk-seg:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* 슬라이더 */
+.pk-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pk-slider-readout {
+  font-family: var(--pk-num);
+  font-size: 22px;
+  font-weight: 700;
+  min-width: 44px;
+  text-align: center;
+  color: var(--ac);
+  font-variant-numeric: tabular-nums;
+}
+.pk-slider {
+  flex: 1;
+  position: relative;
+  height: 40px;
+  touch-action: none;
+  cursor: pointer;
+}
+.pk-slider .track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 17px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--line);
+}
+.pk-slider .fill {
+  position: absolute;
+  left: 0;
+  top: 17px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--ac);
+}
+.pk-slider .thumb {
+  position: absolute;
+  top: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--ink);
+  border: 3px solid var(--ac);
+  box-sizing: border-box;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+.pk-slider-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pk-minor {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  background: transparent;
+}
+
+/* 액션 버튼 */
+.pk-actions {
+  display: grid;
+  gap: 8px;
+}
+.pk-actions.three {
+  grid-template-columns: 1fr 1fr 1.35fr;
+}
+.pk-actions.two {
+  grid-template-columns: 1fr 1.6fr;
+}
+.pk-btn {
+  height: 52px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+}
+.pk-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.pk-btn.fold {
+  border: 1px solid var(--line);
+  color: var(--danger);
+}
+.pk-btn.solid {
+  background: var(--solid);
+  color: var(--solidInk);
+}
+.pk-btn.ac {
+  background: var(--ac);
+  color: var(--acInk);
+  font-weight: 800;
+}
+.pk-btn.next {
+  height: 46px;
+  padding: 0 30px;
+  font-size: 14px;
+}
+
+/* 결과 */
+.pk-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.pk-result-cards {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pk-result-cards .vs {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--dim);
+}
+.pk-mini-card {
+  width: 46px;
+  height: 64px;
+  border-radius: 9px;
+  background: var(--cardBg);
+  border: 1px solid var(--cardLine);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--pk-num);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--cardInk);
+}
+.pk-result-text {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 무드 필 */
+.pk-moods {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.pk-mood {
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--dim);
+  border: 1px solid transparent;
+  background: transparent;
+}
+.pk-mood.on {
+  font-weight: 700;
+  color: var(--ink);
+  border-color: var(--ac);
+  background: var(--panel);
+}
+
+/* 낮은 화면: 카드·팟·패널을 한 단계 줄여 한 화면 수용 */
+@media (max-height: 920px) {
+  .pk-card,
+  .pk-flip {
+    width: 80px;
+    height: 110px;
+  }
+  .pk-card {
+    font-size: 44px;
+  }
+  .pk-card.hidden {
+    font-size: 38px;
+  }
+  .pk-flip-face {
+    font-size: 40px;
+  }
+  .pk-center {
+    gap: 10px;
+  }
+  .pk-pot-num {
+    font-size: 46px;
+  }
+  .pk-panel {
+    min-height: 132px;
+    padding: 12px;
+    gap: 9px;
+  }
+  .pk-btn {
+    height: 48px;
+    font-size: 14px;
+  }
+  .pk-seg {
+    height: 42px;
+  }
+  .pk-col {
+    gap: 8px;
+    padding-top: 6px;
+  }
+  .pk-center {
+    padding: 0;
+  }
+  .pk-mini-card {
+    width: 40px;
+    height: 56px;
+    font-size: 20px;
+  }
+}
+
+/* 게임 종료 오버레이 */
+.pk-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 6, 10, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+.pk-endcard {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 36px 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+}
+.pk-end-title {
+  font-size: 26px;
+  font-weight: 800;
+}
+.pk-end-sub {
+  font-size: 13px;
+  color: var(--dim);
+}
+.pk-endcard .end-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
