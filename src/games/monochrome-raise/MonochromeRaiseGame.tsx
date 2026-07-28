@@ -13,7 +13,8 @@ import { loadPolicy } from './policy.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
 import { SurrenderButton } from '../shared/Surrender.tsx';
-import { TrackRow, tileColor } from './track.tsx';
+import { MoodPills, MoodScope, PkOverlay, useMood } from '../shared/pokerui.tsx';
+import { ArrangeBoard, RaiseTileFace, RaiseTileFlip, TrackStrip } from './raiseui.tsx';
 import MonochromeRaiseOnline from './MonochromeRaiseOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
@@ -24,13 +25,11 @@ const AI: PlayerId = 1;
 
 type Phase = 'setup' | 'arrange' | 'playing' | 'done';
 
-
 export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<Phase>('setup');
   const [mySetup, setMySetup] = useState<RaiseSetup>(randomSetup);
-  const [swapFrom, setSwapFrom] = useState<number | null>(null);
   const [state, setState] = useState<RaiseState | null>(null);
-  const [aiThinking, setAiThinking] = useState(false);
+  const [mood, setMood] = useMood();
   const [online, setOnline] = useState<'panel' | NetRoom | null>(null);
   const recorded = useRef(false);
   const learned = useRef(0);
@@ -44,7 +43,6 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
 
   function enterArrange() {
     setMySetup(randomSetup());
-    setSwapFrom(null);
     setPhase('arrange');
   }
 
@@ -60,13 +58,11 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
   useEffect(() => {
     if (phase !== 'playing' || !state) return;
     if (state.phase === 'decision' && state.toDecide === AI) {
-      setAiThinking(true);
       const timer = setTimeout(() => {
         setState((s) => {
           if (!s || s.phase !== 'decision' || s.toDecide !== AI) return s;
           return decide(s, aiDecide(s, AI));
         });
-        setAiThinking(false);
       }, 900 + Math.random() * 700);
       return () => clearTimeout(timer);
     }
@@ -88,36 +84,6 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
       setPhase('done');
     }
   }, [phase, state]);
-
-  // ---------- 배치 편집 ----------
-
-  function onArrangeTileClick(pos: number) {
-    if (swapFrom === null) {
-      setSwapFrom(pos);
-      return;
-    }
-    if (swapFrom !== pos) {
-      setMySetup((st) => {
-        const order = [...st.order];
-        [order[swapFrom], order[pos]] = [order[pos], order[swapFrom]];
-        const bets = [...st.bets];
-        [bets[swapFrom], bets[pos]] = [bets[pos], bets[swapFrom]];
-        return { order, bets };
-      });
-    }
-    setSwapFrom(null);
-  }
-
-  function adjustChip(pos: number, delta: number) {
-    setMySetup((st) => {
-      const bets = [...st.bets];
-      const next = bets[pos] + delta;
-      if (next < 1) return st;
-      if (delta > 0 && chipsUsed >= TOTAL_CHIPS) return st;
-      bets[pos] = next;
-      return { ...st, bets };
-    });
-  }
 
   // ---------- 렌더 ----------
 
@@ -160,117 +126,159 @@ export default function MonochromeRaiseGame({ onExit }: { onExit: () => void }) 
 
   if (phase === 'arrange') {
     return (
-      <div className="rz-root">
-        <GameHeader onExit={onExit} />
-        <p className="rz-hint">
-          타일 두 개를 클릭하면 순서를 바꿉니다. +/−로 칩을 분배하세요. (남은 칩{' '}
-          <b>{TOTAL_CHIPS - chipsUsed}</b>)
-        </p>
-        <div className="rz-arrange">
-          {mySetup.order.map((v, pos) => (
-            <div key={pos} className="rz-slot">
-              <span className="slot-no">{pos + 1}</span>
-              <button
-                className={`rz-tile ${tileColor(v)} ${swapFrom === pos ? 'selected' : ''}`}
-                onClick={() => onArrangeTileClick(pos)}
-              >
-                {v}
-              </button>
-              <div className="chip-ctl">
-                <button onClick={() => adjustChip(pos, -1)}>−</button>
-                <span className="chip-n">{mySetup.bets[pos]}</span>
-                <button onClick={() => adjustChip(pos, 1)}>＋</button>
-              </div>
+      <MoodScope mood={mood}>
+        <div className="pk-col">
+          <GameHeader onExit={onExit} />
+          <div className="pk-handrow">SETUP</div>
+          <ArrangeBoard setup={mySetup} onChange={setMySetup} />
+          <div className="pk-panel">
+            <div className="pk-status">
+              타일을 탭해 선택하고, 다른 타일을 탭하면 순서(칩 포함)를 교환합니다.
+              <br />
+              짝수는 <b>흑</b> · 홀수는 <b>백</b> — 배치는 상대에게 비공개, 칩 분배만 공개됩니다.
             </div>
-          ))}
+            <div className="pk-actions" style={{ gridTemplateColumns: '1fr 1.6fr' }}>
+              <button className="pk-btn fold" onClick={enterArrange}>
+                다시 섞기
+              </button>
+              <button className="pk-btn ac" disabled={chipsUsed !== TOTAL_CHIPS} onClick={startGame}>
+                {chipsUsed === TOTAL_CHIPS ? '이 설계로 대전 시작' : `칩 ${TOTAL_CHIPS - chipsUsed}개 더 분배`}
+              </button>
+            </div>
+          </div>
+          <MoodPills mood={mood} onMood={setMood} />
         </div>
-        <div className="rz-actions">
-          <button className="ghost-btn" onClick={enterArrange}>🎲 다시 섞기</button>
-          <button className="primary-btn" disabled={chipsUsed !== TOTAL_CHIPS} onClick={startGame}>
-            {chipsUsed === TOTAL_CHIPS ? '이 설계로 대전 시작' : `칩 ${TOTAL_CHIPS - chipsUsed}개 더 분배`}
-          </button>
-        </div>
-      </div>
+      </MoodScope>
     );
   }
 
   if (!state) return null;
-  const r = state.round;
+  const r = Math.min(state.round, 9);
   const last = state.history[state.history.length - 1];
+  const showResult = state.phase === 'result' && last;
   const myDecision = state.phase === 'decision' && state.toDecide === HUMAN;
+  const aiDeciding = state.phase === 'decision' && state.toDecide === AI;
   const need = myDecision ? state.bets[AI][r] - state.bets[HUMAN][r] : 0;
+  const oppBet = showResult ? last.finalBets[AI] : state.bets[AI][r];
+  const myBet = showResult ? last.finalBets[HUMAN] : state.bets[HUMAN][r];
+  const revealNow = !!showResult && last.revealed && last.round === r;
+
+  const panel = (
+    <>
+      {aiDeciding && <div className="pk-thinking">AI가 콜/폴드를 고민 중…</div>}
+      {myDecision && (
+        <>
+          <div className="pk-status">
+            상대가 <b>{state.bets[AI][r]}</b>개를 걸었습니다 — 콜하려면 <b>+{need}</b> (스태시{' '}
+            {Math.min(state.stash[HUMAN], need)}
+            {need > state.stash[HUMAN] ? ` + 뒤 타일 차출 ${need - state.stash[HUMAN]}` : ''})
+            <br />
+            폴드하면 타일을 공개하지 않고 베팅 칩을 내줍니다
+          </div>
+          <div className="pk-actions two">
+            <button className="pk-btn fold" onClick={() => setState(decide(state, 'fold'))}>
+              폴드
+            </button>
+            <button
+              className="pk-btn ac"
+              disabled={maxCallable(state, HUMAN) < need}
+              onClick={() => setState(decide(state, 'call'))}
+            >
+              콜 +{need}
+            </button>
+          </div>
+        </>
+      )}
+      {showResult && (
+        <div className="rz-result">
+          <div className="txt">
+            {last.outcome === 'draw' &&
+              `무승부 (${last.tiles[HUMAN]} : ${last.tiles[AI]}) — 각자 회수`}
+            {last.outcome === 'showdown' &&
+              (last.winner === HUMAN
+                ? `승리! ${last.tiles[HUMAN]} > ${last.tiles[AI]} — 팟 ${last.pot}개`
+                : `패배… ${last.tiles[HUMAN]} < ${last.tiles[AI]} — 상대가 ${last.pot}개`)}
+            {last.outcome === 'fold' &&
+              (last.folder === HUMAN
+                ? `폴드 — AI가 ${last.pot}개 획득 (타일 비공개)`
+                : `AI 폴드 — ${last.pot}개 획득! (타일 비공개)`)}
+          </div>
+          <button className="pk-btn ac next" onClick={() => setState(nextRound(state))}>
+            {state.round >= 9 ? '최종 결과' : '다음 라운드'}
+          </button>
+        </div>
+      )}
+    </>
+  );
 
   return (
-    <div className="rz-root">
-      <GameHeader onExit={onExit} surrender={phase === 'playing' && state.phase !== 'gameover'} />
+    <MoodScope mood={mood}>
+      <div className="pk-col">
+        <GameHeader onExit={onExit} surrender={phase === 'playing' && state.phase !== 'gameover'} />
+        <div className="pk-handrow">ROUND {String(r + 1).padStart(2, '0')}/10</div>
 
-      <div className="rz-scoreboard">
-        <div className="stack me">나 <b>{state.stash[HUMAN]}</b>칩</div>
-        <div className="round-info">라운드 {Math.min(r + 1, 10)}/10</div>
-        <div className="stack ai">AI (EXTREME) <b>{state.stash[AI]}</b>칩</div>
-      </div>
+        <div className="pk-seat">
+          <div className="pk-seat-left">
+            {aiDeciding && <span className="pk-dot" />}
+            <span className="pk-seat-name">AI</span>
+          </div>
+          <div className="pk-seat-right">
+            <span className="k">스태시</span>
+            <span className="v">{state.stash[AI]}</span>
+            <span className="rz-goal">/31 목표</span>
+          </div>
+        </div>
 
-      {/* 트랙: 양쪽 배분 공개, 타일은 공개된 것만 */}
-      <TrackRow label="AI" state={state} p={AI} current={r} />
-      <TrackRow label="나" state={state} p={HUMAN} current={r} mine />
+        <TrackStrip state={state} me={HUMAN} />
 
-      {/* 결정/결과 패널 */}
-      <div className="rz-panel">
-        {state.phase === 'decision' && state.toDecide === AI && (
-          <span className="rz-note">{aiThinking ? 'AI가 콜/폴드를 고민 중…' : ''}</span>
-        )}
-        {myDecision && (
-          <>
-            <span className="rz-note">
-              내 타일 <b>{state.order[HUMAN][r]}</b> · 내 베팅 {state.bets[HUMAN][r]} vs AI{' '}
-              {state.bets[AI][r]} — 콜 비용 <b>{need}</b>
-              {need > state.stash[HUMAN] && ' (부족분은 이후 타일에서 차출)'}
+        <div className="rz-duel">
+          <div className="rz-zone">
+            <RaiseTileFlip value={state.order[AI][r]} revealed={revealNow} />
+            <span className="pk-bet-pill">
+              베팅 <b>{oppBet}</b>
             </span>
-            <div className="rz-btns">
-              <button className="action-btn fold" onClick={() => setState(decide(state, 'fold'))}>
-                폴드
-              </button>
-              <button
-                className="action-btn call"
-                disabled={maxCallable(state, HUMAN) < need}
-                onClick={() => setState(decide(state, 'call'))}
-              >
-                콜 (+{need})
-              </button>
-            </div>
-          </>
-        )}
-        {state.phase === 'result' && last && (
-          <>
-            <span className="rz-note">
-              {last.outcome === 'draw' && `무승부 — 각자 베팅 회수 (${last.tiles[HUMAN]} vs ${last.tiles[AI]})`}
-              {last.outcome === 'showdown' &&
-                `${last.tiles[HUMAN]} vs ${last.tiles[AI]} — ${last.winner === HUMAN ? '팟 획득!' : '패배'} (${last.pot}칩)`}
-              {last.outcome === 'fold' &&
-                (last.folder === HUMAN
-                  ? `폴드 — AI가 ${last.pot}칩 획득 (타일 비공개)`
-                  : `AI 폴드 — ${last.pot}칩 획득! (타일 비공개)`)}
+          </div>
+          <div className="rz-pot">
+            <span className="k">팟</span>
+            <span className="n">{oppBet + myBet}</span>
+          </div>
+          <div className="rz-zone">
+            <span className="pk-bet-pill">
+              내 베팅 <b>{myBet}</b>
             </span>
-            <button className="primary-btn" onClick={() => setState(nextRound(state))}>
-              {state.round >= 9 ? '결과 보기' : '다음 라운드'}
-            </button>
-          </>
-        )}
-      </div>
+            <RaiseTileFace value={state.order[HUMAN][r]} />
+            <span className="pk-caption accent">내 타일 — 상대에겐 비공개</span>
+          </div>
+        </div>
 
-      {phase === 'done' && state.result && (
-        <div className="rz-overlay">
-          <div className="rz-endcard">
-            <h2>{state.result.winner === null ? '무승부' : state.result.winner === HUMAN ? '🏆 승리!' : '패배…'}</h2>
-            <p>최종 칩 — 나 {state.stash[HUMAN]} : AI {state.stash[AI]}</p>
+        <div className="pk-seat">
+          <div className="pk-seat-left">
+            {myDecision && <span className="pk-dot" />}
+            <span className="pk-seat-name">나</span>
+          </div>
+          <div className="pk-seat-right">
+            <span className="k">스태시</span>
+            <span className="v">{state.stash[HUMAN]}</span>
+            <span className="rz-goal">/31 목표</span>
+          </div>
+        </div>
+
+        <div className="pk-panel">{panel}</div>
+        <MoodPills mood={mood} onMood={setMood} />
+
+        {phase === 'done' && state.result && (
+          <PkOverlay
+            title={state.result.winner === null ? '무승부' : state.result.winner === HUMAN ? '🏆 승리!' : '패배…'}
+            sub={`최종 스태시 — 나 ${state.stash[HUMAN]} : AI ${state.stash[AI]}`}
+          >
             <div className="end-actions">
               <button className="primary-btn" onClick={enterArrange}>다시 대전</button>
               <button className="ghost-btn" onClick={onExit}>로비로</button>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          </PkOverlay>
+        )}
+      </div>
+    </MoodScope>
   );
 }
 

@@ -99,6 +99,28 @@ function SeatRow({ seat }: { seat: SeatProps }) {
   );
 }
 
+/** 무드 스코프 — 전체 화면 배경 + 무드/앱 변수 주입. 포커 외 베팅류 게임도 재사용 */
+export function MoodScope({ mood, children }: { mood: Mood; children: ReactNode }) {
+  return (
+    <div className="pk-scope" style={moodVars(mood)}>
+      <div className="pk-bg">{children}</div>
+    </div>
+  );
+}
+
+/** 무드 전환 필 (느와르/펠트/아이보리) */
+export function MoodPills({ mood, onMood }: { mood: Mood; onMood: (m: Mood) => void }) {
+  return (
+    <div className="pk-moods">
+      {(['noir', 'felt', 'ivory'] as Mood[]).map((m) => (
+        <button key={m} className={`pk-mood ${mood === m ? 'on' : ''}`} onClick={() => onMood(m)}>
+          {MOOD_NAME[m]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** 전체 화면 레이아웃 — header(게임 헤더)는 무드 스코프 안에서 렌더된다 */
 export default function PokerLayout(p: {
   mood: Mood;
@@ -120,10 +142,9 @@ export default function PokerLayout(p: {
   children?: ReactNode;
 }) {
   return (
-    <div className="pk-scope" style={moodVars(p.mood)}>
-      <div className="pk-bg">
-        <div className="pk-col">
-          {p.header}
+    <MoodScope mood={p.mood}>
+      <div className="pk-col">
+        {p.header}
           <div className="pk-handrow">HAND {String(p.handNo).padStart(2, '0')}</div>
 
           <SeatRow seat={p.opp} />
@@ -152,22 +173,11 @@ export default function PokerLayout(p: {
 
           <div className="pk-panel">{p.panel}</div>
 
-          <div className="pk-moods">
-            {(['noir', 'felt', 'ivory'] as Mood[]).map((m) => (
-              <button
-                key={m}
-                className={`pk-mood ${p.mood === m ? 'on' : ''}`}
-                onClick={() => p.onMood(m)}
-              >
-                {MOOD_NAME[m]}
-              </button>
-            ))}
-          </div>
+          <MoodPills mood={p.mood} onMood={p.onMood} />
 
           {p.children}
-        </div>
       </div>
-    </div>
+    </MoodScope>
   );
 }
 

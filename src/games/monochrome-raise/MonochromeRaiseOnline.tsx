@@ -9,7 +9,8 @@ import {
   randomSetup,
 } from './engine.ts';
 import { viewFor } from './view.ts';
-import { TrackRow, tileColor } from './track.tsx';
+import { MoodPills, MoodScope, PkOverlay, useMood } from '../shared/pokerui.tsx';
+import { ArrangeBoard, RaiseTileFace, RaiseTileFlip, TrackStrip } from './raiseui.tsx';
 import type { NetRoom } from '../../net/room.ts';
 import { makeDataCommitment, verifyDataCommitment } from '../../net/commit.ts';
 import ChatPanel from '../../net/ChatPanel.tsx';
@@ -52,9 +53,9 @@ export default function MonochromeRaiseOnline({
   const opp: PlayerId = (1 - me) as PlayerId;
 
   const [mySetup, setMySetup] = useState<RaiseSetup>(randomSetup);
-  const [swapFrom, setSwapFrom] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [view, setView] = useState<RaiseState | null>(null);
+  const [mood, setMood] = useMood();
   const [oppLeft, setOppLeft] = useState(false);
   /** 상대 리빌이 커밋 해시와 불일치 — 조작된 클라이언트 */
   const [cheat, setCheat] = useState(false);
@@ -199,204 +200,8 @@ export default function MonochromeRaiseOnline({
     }
   }
 
-  function onArrangeTileClick(pos: number) {
-    if (submitted) return;
-    if (swapFrom === null) {
-      setSwapFrom(pos);
-      return;
-    }
-    if (swapFrom !== pos) {
-      setMySetup((s) => {
-        const order = [...s.order];
-        [order[swapFrom], order[pos]] = [order[pos], order[swapFrom]];
-        return { ...s, order };
-      });
-    }
-    setSwapFrom(null);
-  }
-
-  function adjustChip(pos: number, delta: number) {
-    if (submitted) return;
-    setMySetup((s) => {
-      const bets = [...s.bets];
-      const next = bets[pos] + delta;
-      if (next < 1) return s;
-      const total = bets.reduce((a, b) => a + b, 0) - bets[pos] + next;
-      if (total > TOTAL_CHIPS) return s;
-      bets[pos] = next;
-      return { ...s, bets };
-    });
-  }
-
-  // ---------- 배치 단계 ----------
-  if (!view) {
-    return (
-      <div className="rz-root">
-        <GameHeader onExit={exit} />
-        <div className="online-status">
-          <span className={`dot ${oppLeft ? 'off' : ''}`} />
-          방 {room.code} · {room.isHost ? '호스트' : '게스트'}
-        </div>
-        <p className="rz-hint">
-          {submitted
-            ? '상대의 설계를 기다리는 중…'
-            : <>타일 두 개를 클릭하면 순서를 바꿉니다. +/−로 칩을 분배하세요. (남은 칩 <b>{TOTAL_CHIPS - chipsUsed}</b>)</>}
-        </p>
-        <div className="rz-arrange">
-          {mySetup.order.map((v, pos) => (
-            <div key={pos} className="rz-slot">
-              <span className="slot-no">{pos + 1}</span>
-              <button
-                className={`rz-tile ${tileColor(v)} ${swapFrom === pos ? 'selected' : ''}`}
-                onClick={() => onArrangeTileClick(pos)}
-              >
-                {v}
-              </button>
-              <div className="chip-ctl">
-                <button onClick={() => adjustChip(pos, -1)}>−</button>
-                <span className="chip-n">{mySetup.bets[pos]}</span>
-                <button onClick={() => adjustChip(pos, 1)}>＋</button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="rz-actions">
-          {!submitted ? (
-            <>
-              <button
-                className="ghost-btn"
-                onClick={() => {
-                  setMySetup(randomSetup());
-                  setSwapFrom(null);
-                }}
-              >
-                🎲 다시 섞기
-              </button>
-              <button
-                className="primary-btn"
-                disabled={chipsUsed !== TOTAL_CHIPS}
-                onClick={() => void submitSetup()}
-              >
-                {chipsUsed === TOTAL_CHIPS ? '이 설계로 대전 시작' : `칩 ${TOTAL_CHIPS - chipsUsed}개 더 분배`}
-              </button>
-            </>
-          ) : (
-            <p className="online-wait">
-              <span className="online-spinner" /> 상대가 설계를 마치면 시작합니다
-            </p>
-          )}
-        </div>
-        {cheat && (
-          <div className="online-notice-overlay">
-            <div className="online-notice">
-              <p>상대 설계의 검증에 실패했습니다 — 조작된 클라이언트일 수 있습니다</p>
-              <button className="primary-btn" onClick={exit}>로비로</button>
-            </div>
-          </div>
-        )}
-        {oppLeft && !cheat && (
-          <div className="online-notice-overlay">
-            <div className="online-notice">
-              <p>상대의 연결이 끊어졌습니다</p>
-              <button className="primary-btn" onClick={exit}>로비로</button>
-            </div>
-          </div>
-        )}
-        <ChatPanel room={room} />
-      </div>
-    );
-  }
-
-  // ---------- 대국 ----------
-  const state = view;
-  const r = state.round;
-  const last = state.history[state.history.length - 1];
-  const myDecision = state.phase === 'decision' && state.toDecide === me;
-  const need = myDecision ? state.bets[opp][r] - state.bets[me][r] : 0;
-
-  return (
-    <div className="rz-root">
-      <GameHeader onExit={exit} />
-
-      <div className="online-status">
-        <span className={`dot ${oppLeft ? 'off' : ''}`} />
-        방 {room.code} · {room.isHost ? '호스트' : '게스트'}
-      </div>
-
-      <div className="rz-scoreboard">
-        <div className="stack me">나 <b>{state.stash[me]}</b>칩</div>
-        <div className="round-info">라운드 {Math.min(r + 1, 10)}/10</div>
-        <div className="stack ai">상대 <b>{state.stash[opp]}</b>칩</div>
-      </div>
-
-      <TrackRow label="상대" state={state} p={opp} current={r} />
-      <TrackRow label="나" state={state} p={me} current={r} mine />
-
-      <div className="rz-panel">
-        {state.phase === 'decision' && state.toDecide === opp && (
-          <span className="rz-note">상대가 콜/폴드를 고민 중…</span>
-        )}
-        {myDecision && (
-          <>
-            <span className="rz-note">
-              내 타일 <b>{state.order[me][r]}</b> · 내 베팅 {state.bets[me][r]} vs 상대{' '}
-              {state.bets[opp][r]} — 콜 비용 <b>{need}</b>
-              {need > state.stash[me] && ' (부족분은 이후 타일에서 차출)'}
-            </span>
-            <div className="rz-btns">
-              <button
-                className="action-btn fold"
-                onClick={() => act({ k: 'decide', action: 'fold' })}
-              >
-                폴드
-              </button>
-              <button
-                className="action-btn call"
-                disabled={maxCallable(state, me) < need}
-                onClick={() => act({ k: 'decide', action: 'call' })}
-              >
-                콜 (+{need})
-              </button>
-            </div>
-          </>
-        )}
-        {state.phase === 'result' && last && (
-          <>
-            <span className="rz-note">
-              {last.outcome === 'draw' &&
-                `무승부 — 각자 베팅 회수 (${last.tiles[me]} vs ${last.tiles[opp]})`}
-              {last.outcome === 'showdown' &&
-                `${last.tiles[me]} vs ${last.tiles[opp]} — ${last.winner === me ? '팟 획득!' : '패배'} (${last.pot}칩)`}
-              {last.outcome === 'fold' &&
-                (last.folder === me
-                  ? `폴드 — 상대가 ${last.pot}칩 획득 (타일 비공개)`
-                  : `상대 폴드 — ${last.pot}칩 획득! (타일 비공개)`)}
-            </span>
-            <button className="primary-btn" onClick={() => act({ k: 'next' })}>
-              {state.round >= 9 ? '결과 보기' : '다음 라운드'}
-            </button>
-          </>
-        )}
-      </div>
-
-      {state.result && (
-        <div className="rz-overlay">
-          <div className="rz-endcard">
-            <h2>
-              {state.result.winner === null
-                ? '무승부'
-                : state.result.winner === me
-                  ? '🏆 승리!'
-                  : '패배…'}
-            </h2>
-            <p>최종 칩 — 나 {state.stash[me]} : 상대 {state.stash[opp]}</p>
-            <div className="end-actions">
-              <button className="ghost-btn" onClick={exit}>로비로</button>
-            </div>
-          </div>
-        </div>
-      )}
-
+  const notices = (
+    <>
       {cheat && (
         <div className="online-notice-overlay">
           <div className="online-notice">
@@ -405,8 +210,7 @@ export default function MonochromeRaiseOnline({
           </div>
         </div>
       )}
-
-      {oppLeft && !state.result && !cheat && (
+      {oppLeft && !cheat && !view?.result && (
         <div className="online-notice-overlay">
           <div className="online-notice">
             <p>상대의 연결이 끊어졌습니다</p>
@@ -414,8 +218,187 @@ export default function MonochromeRaiseOnline({
           </div>
         </div>
       )}
-      <ChatPanel room={room} />
-    </div>
+    </>
+  );
+
+  // ---------- 배치 단계 ----------
+  if (!view) {
+    return (
+      <MoodScope mood={mood}>
+        <div className="pk-col">
+          <GameHeader onExit={exit} />
+          <div className="online-status">
+            <span className={`dot ${oppLeft ? 'off' : ''}`} />
+            방 {room.code} · {room.isHost ? '호스트' : '게스트'}
+          </div>
+          <div className="pk-handrow">SETUP</div>
+          <ArrangeBoard setup={mySetup} onChange={setMySetup} disabled={submitted} />
+          <div className="pk-panel">
+            {!submitted ? (
+              <>
+                <div className="pk-status">
+                  타일을 탭해 선택하고, 다른 타일을 탭하면 순서(칩 포함)를 교환합니다.
+                  <br />
+                  배치는 커밋-리빌로 고정됩니다 — 상대는 시작 전 내 설계를 볼 수 없습니다.
+                </div>
+                <div className="pk-actions" style={{ gridTemplateColumns: '1fr 1.6fr' }}>
+                  <button className="pk-btn fold" onClick={() => setMySetup(randomSetup())}>
+                    다시 섞기
+                  </button>
+                  <button
+                    className="pk-btn ac"
+                    disabled={chipsUsed !== TOTAL_CHIPS}
+                    onClick={() => void submitSetup()}
+                  >
+                    {chipsUsed === TOTAL_CHIPS ? '이 설계로 대전 시작' : `칩 ${TOTAL_CHIPS - chipsUsed}개 더 분배`}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="pk-thinking">상대가 설계를 마치면 시작합니다…</div>
+            )}
+          </div>
+          <MoodPills mood={mood} onMood={setMood} />
+          {notices}
+          <ChatPanel room={room} />
+        </div>
+      </MoodScope>
+    );
+  }
+
+  // ---------- 대국 ----------
+  const state = view;
+  const r = Math.min(state.round, 9);
+  const last = state.history[state.history.length - 1];
+  const showResult = state.phase === 'result' && last;
+  const myDecision = state.phase === 'decision' && state.toDecide === me;
+  const oppDeciding = state.phase === 'decision' && state.toDecide === opp;
+  const need = myDecision ? state.bets[opp][r] - state.bets[me][r] : 0;
+  const oppBet = showResult ? last.finalBets[opp] : state.bets[opp][r];
+  const myBet = showResult ? last.finalBets[me] : state.bets[me][r];
+  const revealNow = !!showResult && last.revealed && last.round === r;
+
+  const panel = (
+    <>
+      {oppDeciding && <div className="pk-thinking">상대가 콜/폴드를 고민 중…</div>}
+      {myDecision && (
+        <>
+          <div className="pk-status">
+            상대가 <b>{state.bets[opp][r]}</b>개를 걸었습니다 — 콜하려면 <b>+{need}</b> (스태시{' '}
+            {Math.min(state.stash[me], need)}
+            {need > state.stash[me] ? ` + 뒤 타일 차출 ${need - state.stash[me]}` : ''})
+            <br />
+            폴드하면 타일을 공개하지 않고 베팅 칩을 내줍니다
+          </div>
+          <div className="pk-actions two">
+            <button className="pk-btn fold" onClick={() => act({ k: 'decide', action: 'fold' })}>
+              폴드
+            </button>
+            <button
+              className="pk-btn ac"
+              disabled={maxCallable(state, me) < need}
+              onClick={() => act({ k: 'decide', action: 'call' })}
+            >
+              콜 +{need}
+            </button>
+          </div>
+        </>
+      )}
+      {showResult && (
+        <div className="rz-result">
+          <div className="txt">
+            {last.outcome === 'draw' &&
+              `무승부 (${last.tiles[me]} : ${last.tiles[opp]}) — 각자 회수`}
+            {last.outcome === 'showdown' &&
+              (last.winner === me
+                ? `승리! ${last.tiles[me]} > ${last.tiles[opp]} — 팟 ${last.pot}개`
+                : `패배… ${last.tiles[me]} < ${last.tiles[opp]} — 상대가 ${last.pot}개`)}
+            {last.outcome === 'fold' &&
+              (last.folder === me
+                ? `폴드 — 상대가 ${last.pot}개 획득 (타일 비공개)`
+                : `상대 폴드 — ${last.pot}개 획득! (타일 비공개)`)}
+          </div>
+          <button className="pk-btn ac next" onClick={() => act({ k: 'next' })}>
+            {state.round >= 9 ? '최종 결과' : '다음 라운드'}
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <MoodScope mood={mood}>
+      <div className="pk-col">
+        <GameHeader onExit={exit} />
+        <div className="online-status">
+          <span className={`dot ${oppLeft ? 'off' : ''}`} />
+          방 {room.code} · {room.isHost ? '호스트' : '게스트'}
+        </div>
+        <div className="pk-handrow">ROUND {String(r + 1).padStart(2, '0')}/10</div>
+
+        <div className="pk-seat">
+          <div className="pk-seat-left">
+            {oppDeciding && <span className="pk-dot" />}
+            <span className="pk-seat-name">상대</span>
+          </div>
+          <div className="pk-seat-right">
+            <span className="k">스태시</span>
+            <span className="v">{state.stash[opp]}</span>
+            <span className="rz-goal">/31 목표</span>
+          </div>
+        </div>
+
+        <TrackStrip state={state} me={me} />
+
+        <div className="rz-duel">
+          <div className="rz-zone">
+            <RaiseTileFlip value={state.order[opp][r]} revealed={revealNow} />
+            <span className="pk-bet-pill">
+              베팅 <b>{oppBet}</b>
+            </span>
+          </div>
+          <div className="rz-pot">
+            <span className="k">팟</span>
+            <span className="n">{oppBet + myBet}</span>
+          </div>
+          <div className="rz-zone">
+            <span className="pk-bet-pill">
+              내 베팅 <b>{myBet}</b>
+            </span>
+            <RaiseTileFace value={state.order[me][r]} />
+            <span className="pk-caption accent">내 타일 — 상대에겐 비공개</span>
+          </div>
+        </div>
+
+        <div className="pk-seat">
+          <div className="pk-seat-left">
+            {myDecision && <span className="pk-dot" />}
+            <span className="pk-seat-name">나</span>
+          </div>
+          <div className="pk-seat-right">
+            <span className="k">스태시</span>
+            <span className="v">{state.stash[me]}</span>
+            <span className="rz-goal">/31 목표</span>
+          </div>
+        </div>
+
+        <div className="pk-panel">{panel}</div>
+        <MoodPills mood={mood} onMood={setMood} />
+
+        {state.result && (
+          <PkOverlay
+            title={state.result.winner === null ? '무승부' : state.result.winner === me ? '🏆 승리!' : '패배…'}
+            sub={`최종 스태시 — 나 ${state.stash[me]} : 상대 ${state.stash[opp]}`}
+          >
+            <div className="end-actions">
+              <button className="ghost-btn" onClick={exit}>로비로</button>
+            </div>
+          </PkOverlay>
+        )}
+        {notices}
+        <ChatPanel room={room} />
+      </div>
+    </MoodScope>
   );
 }
 
