@@ -1,0 +1,173 @@
+/* 블라인드 홀덤 — 미니멀 톤 (무드 변수는 shared/pokerui.css의 pk-scope가 주입) */
+
+/* 설정(소개) 화면 — 앱 테마 */
+.bh-root {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 12px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100dvh;
+}
+.bh-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 7vh;
+  text-align: center;
+  align-items: center;
+}
+.bh-rule-summary {
+  color: var(--text-dim);
+  font-size: 14px;
+  max-width: 460px;
+  line-height: 1.7;
+}
+
+/* ---------- 공유 카드 ---------- */
+.bh-community {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.bh-community-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--dim);
+}
+.bh-community-row {
+  display: flex;
+  gap: 8px;
+}
+.bh-ccard {
+  width: 54px;
+  height: 74px;
+  border-radius: 11px;
+  border: 1.5px solid var(--cardLine);
+  background: var(--cardBg);
+  box-shadow: var(--cardGlow);
+  color: var(--cardInk);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--pk-num);
+  font-size: 30px;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+/* ---------- 위험 판독 배지 ---------- */
+.bh-risk {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.bh-risk.safe {
+  color: var(--ac);
+}
+.bh-risk.warn {
+  color: var(--gold);
+}
+.bh-risk.danger {
+  color: var(--danger);
+}
+
+/* ---------- 족보 태그 ---------- */
+.bh-rank {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  white-space: nowrap;
+}
+.bh-rank.r1 {
+  color: var(--ink);
+}
+.bh-rank.r2 {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.bh-rank.r3 {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* 중앙 축: 공유 카드가 팟과 함께 놓이도록 */
+.bh-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 결과 블록 */
+.bh-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+.bh-result .txt {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.bh-result .sub {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+/* 낮은 화면: 공유 카드 블록이 추가된 만큼 이마 카드·간격을 더 줄여 한 화면에 수용 */
+@media (max-height: 880px) {
+  .bh-ccard {
+    width: 44px;
+    height: 58px;
+    font-size: 23px;
+  }
+  .bh-mid {
+    gap: 6px;
+  }
+  .bh-community {
+    gap: 3px;
+  }
+  .bh-col .pk-card {
+    width: 62px;
+    height: 84px;
+    font-size: 34px;
+  }
+  .bh-col .pk-card.hidden {
+    font-size: 30px;
+  }
+  .bh-col .pk-center {
+    gap: 7px;
+    padding: 0;
+  }
+  .bh-col .pk-zone {
+    gap: 5px;
+  }
+  .bh-col .pk-pot-num {
+    font-size: 38px;
+  }
+  .bh-col .pk-panel {
+    min-height: 124px;
+    padding: 11px;
+    gap: 8px;
+  }
+  .bh-col .pk-col,
+  .bh-col.pk-col {
+    gap: 7px;
+  }
+  .bh-col .pk-caption {
+    font-size: 9px;
+  }
+}

@@ -17,7 +17,10 @@
     "cfr:eval:raise": "esbuild scripts/cfr/eval-monochrome-raise.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval-raise.mjs && node scripts/cfr/.out/eval-raise.mjs",
     "cfr:train:janus": "esbuild scripts/cfr/train-janus.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/train-janus.mjs && node scripts/cfr/.out/train-janus.mjs",
     "cfr:eval:janus": "esbuild scripts/cfr/eval-janus.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval-janus.mjs && node scripts/cfr/.out/eval-janus.mjs",
-    "rules:audit": "esbuild scripts/rules/audit-hidden-formula.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/rules-audit.mjs && node scripts/cfr/.out/rules-audit.mjs"
+    "cfr:train:holdem": "esbuild scripts/cfr/train-blind-holdem.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/train-holdem.mjs && node scripts/cfr/.out/train-holdem.mjs",
+    "cfr:eval:holdem": "esbuild scripts/cfr/eval-blind-holdem.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval-holdem.mjs && node scripts/cfr/.out/eval-holdem.mjs",
+    "rules:audit": "esbuild scripts/rules/audit-hidden-formula.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/rules-audit.mjs && node scripts/cfr/.out/rules-audit.mjs",
+    "rules:audit:holdem": "esbuild scripts/rules/audit-blind-holdem.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/holdem-audit.mjs && node scripts/cfr/.out/holdem-audit.mjs"
   },
   "dependencies": {
     "nostr-tools": "^2.23.12",
