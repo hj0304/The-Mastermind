@@ -4,6 +4,7 @@ import { GAMES } from './games/registry.ts';
 import type { GameMeta } from './games/registry.ts';
 import MonochromeGame from './games/monochrome/MonochromeGame.tsx';
 import BlindPokerGame from './games/blind-poker/BlindPokerGame.tsx';
+import BlindHoldemGame from './games/blind-holdem/BlindHoldemGame.tsx';
 import JungleJanggiGame from './games/jungle-janggi/JungleJanggiGame.tsx';
 import NumberJanggiGame from './games/number-janggi/NumberJanggiGame.tsx';
 import QuattroGame from './games/quattro/QuattroGame.tsx';
@@ -240,6 +241,7 @@ function GameCard({ game, onPlay }: { game: GameMeta; onPlay: (id: string) => vo
 const GAME_COMPONENTS: Record<string, ComponentType<{ onExit: () => void }>> = {
   'monochrome': MonochromeGame,
   'blind-poker': BlindPokerGame,
+  'blind-holdem': BlindHoldemGame,
   'jungle-janggi': JungleJanggiGame,
   'number-janggi': NumberJanggiGame,
   'quattro': QuattroGame,

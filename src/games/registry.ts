@@ -62,6 +62,17 @@ export const GAMES: GameMeta[] = [
     origin: '클래식 카드게임 인디언 포커(Blind man\'s bluff)',
   },
   {
+    id: 'blind-holdem',
+    genre: 'card',
+    hot: true,
+    icon: '🂠',
+    name: '블라인드 홀덤',
+    tagline: '공유 카드가 폴드의 위험을 알려준다',
+    solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
+    status: 'playable',
+    origin: '인디언 포커 × 텍사스 홀덤(공유 카드)',
+  },
+  {
     id: 'yut-tactics',
     genre: 'board',
     icon: '🪵',
