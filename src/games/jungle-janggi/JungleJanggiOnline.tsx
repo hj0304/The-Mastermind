@@ -4,6 +4,7 @@ import { COLS, ROWS, applyMove, createGame, idx, legalMoves } from './engine.ts'
 import type { NetRoom } from '../../net/room.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import ChatPanel from '../../net/ChatPanel.tsx';
+import { PIECE_GLYPH, PIECE_NAME, PiecePips } from './pieces.tsx';
 import './jungle.css';
 import '../../net/online.css';
 
@@ -17,9 +18,6 @@ type NetMsg =
   /** 선공 동전 결과 (호스트가 정해 알린다) */
   | { t: 'toss'; first: PlayerId }
   | { t: 'ready' } | { t: 'state'; s: JState } | { t: 'act'; m: Move };
-
-const PIECE_CHAR: Record<PieceType, string> = { K: '王', G: '將', E: '相', C: '子', H: '侯' };
-const PIECE_NAME: Record<PieceType, string> = { K: '왕', G: '장', E: '상', C: '자', H: '후' };
 
 type Selection = { kind: 'cell'; cell: number } | { kind: 'hand'; piece: PieceType } | null;
 
@@ -219,8 +217,11 @@ export default function JungleJanggiOnline({ room, onExit }: { room: NetRoom; on
                 onClick={() => onCellClick(cell)}
               >
                 {piece && (
-                  <span className={`jj-piece p${piece.owner === me ? 0 : 1} ${piece.type === 'K' ? 'king' : ''}`}>
-                    {PIECE_CHAR[piece.type]}
+                  <span
+                    className={`jj-piece p${piece.owner === me ? 0 : 1} ${piece.type === 'K' ? 'king' : ''} ${piece.type === 'H' ? 'promoted' : ''}`}
+                  >
+                    <PiecePips type={piece.type} />
+                    {PIECE_GLYPH[piece.type]}
                   </span>
                 )}
               </button>
@@ -248,8 +249,8 @@ export default function JungleJanggiOnline({ room, onExit }: { room: NetRoom; on
               {state.result.winner === null ? '무승부' : state.result.winner === me ? '🏆 승리!' : '패배…'}
             </h2>
             <p>
-              {state.result.reason === 'capture' && '왕이 잡혔습니다'}
-              {state.result.reason === 'territory' && '왕이 상대 진영에서 살아남았습니다'}
+              {state.result.reason === 'capture' && '호랑이가 잡혔습니다'}
+              {state.result.reason === 'territory' && '호랑이가 상대 진영에서 살아남았습니다'}
               {state.result.reason === 'repetition' && '동일 국면 3회 반복'}
             </p>
             <div className="end-actions">
@@ -304,7 +305,8 @@ function HandRow({
             onClick={() => onClick(p)}
             title={PIECE_NAME[p]}
           >
-            {PIECE_CHAR[p]}
+            <PiecePips type={p} />
+            {PIECE_GLYPH[p]}
           </button>
         ))}
       </div>

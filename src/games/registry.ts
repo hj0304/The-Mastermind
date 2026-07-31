@@ -35,7 +35,7 @@ export const GAMES: GameMeta[] = [
     genre: 'board',
     icon: '🐯',
     name: '밀림장기',
-    tagline: '3×4 초소형 장기판, 잡은 말은 내 말이 된다',
+    tagline: '3×4 백두 밀림 — 길들인 짐승은 내 편이 된다',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
     status: 'playable',
     origin: '동물장기(どうぶつしょうぎ) 계열 미니 장기',

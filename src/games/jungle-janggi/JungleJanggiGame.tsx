@@ -9,25 +9,11 @@ import { SurrenderButton } from '../shared/Surrender.tsx';
 import JungleJanggiOnline from './JungleJanggiOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
+import { PIECE_GLYPH, PIECE_NAME, PiecePips } from './pieces.tsx';
 import './jungle.css';
 
 const HUMAN: PlayerId = 0;
 const AI: PlayerId = 1;
-
-const PIECE_CHAR: Record<PieceType, string> = {
-  K: '王',
-  G: '將',
-  E: '相',
-  C: '子',
-  H: '侯',
-};
-const PIECE_NAME: Record<PieceType, string> = {
-  K: '왕',
-  G: '장',
-  E: '상',
-  C: '자',
-  H: '후',
-};
 
 type Phase = 'setup' | 'playing' | 'done';
 type Selection = { kind: 'cell'; cell: number } | { kind: 'hand'; piece: PieceType } | null;
@@ -161,10 +147,11 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
         <div className="jj-setup">
           <h2>밀림장기</h2>
           <p className="jj-rule-summary">
-            3×4 초소형 장기. <b>왕(王)</b>은 8방향, <b>장(將)</b>은 상하좌우, <b>상(相)</b>은 대각,
-            <b> 자(子)</b>는 앞으로 한 칸 — 상대 진영에 닿으면 <b>후(侯)</b>로 승격합니다. 잡은
-            기물은 포로가 되어 빈 칸에 다시 놓을 수 있습니다(상대 진영 제외). 상대 왕을 잡거나, 내
-            왕이 상대 진영에서 한 턴을 버티면 승리!
+            3×4 백두 밀림. <b>호랑이🐅</b>는 8방향, <b>곰🐻</b>은 상하좌우, <b>표범🐆</b>은 대각,
+            <b> 새끼범🐯</b>은 앞으로 한 칸 — 상대 진영에 닿으면 <b>큰범</b>으로 자랍니다. 잡은
+            짐승은 길들여서 빈 칸에 다시 풀어놓을 수 있습니다(상대 진영 제외). 상대 호랑이를
+            잡거나, 내 호랑이가 상대 진영에서 한 턴을 버티면 승리! <b>타일의 점</b>이 그 짐승의
+            이동 방향입니다.
           </p>
           <div className="setup-stats">
             <span className="extreme-tag">EXTREME AI</span>
@@ -231,8 +218,11 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
                 onClick={() => onCellClick(cell)}
               >
                 {piece && (
-                  <span className={`jj-piece p${piece.owner} ${piece.type === 'K' ? 'king' : ''}`}>
-                    {PIECE_CHAR[piece.type]}
+                  <span
+                    className={`jj-piece p${piece.owner} ${piece.type === 'K' ? 'king' : ''} ${piece.type === 'H' ? 'promoted' : ''}`}
+                  >
+                    <PiecePips type={piece.type} />
+                    {PIECE_GLYPH[piece.type]}
                   </span>
                 )}
               </button>
@@ -261,8 +251,8 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
                   : '패배…'}
             </h2>
             <p>
-              {state.result.reason === 'capture' && '왕이 잡혔습니다'}
-              {state.result.reason === 'territory' && '왕이 상대 진영에서 살아남았습니다'}
+              {state.result.reason === 'capture' && '호랑이가 잡혔습니다'}
+              {state.result.reason === 'territory' && '호랑이가 상대 진영에서 살아남았습니다'}
               {state.result.reason === 'repetition' && '동일 국면 3회 반복'}
             </p>
             <div className="end-actions">
@@ -305,7 +295,8 @@ function HandRow({
             onClick={() => onClick(p)}
             title={PIECE_NAME[p]}
           >
-            {PIECE_CHAR[p]}
+            <PiecePips type={p} />
+            {PIECE_GLYPH[p]}
           </button>
         ))}
       </div>

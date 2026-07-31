@@ -73,16 +73,36 @@
 
 /* 기물 */
 .jj-piece {
+  position: relative;
   width: 76%;
   height: 76%;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(22px, 7vw, 34px);
+  font-size: clamp(22px, 7vw, 32px);
   font-weight: 800;
   user-select: none;
 }
+
+/* 이동 방향 핍 — 타일 가장자리의 점이 그 짐승이 갈 수 있는 방향 (위 = 전방) */
+.jj-pip {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.jj-pip.n  { top: 3px; left: 50%; margin-left: -2.5px; }
+.jj-pip.s  { bottom: 3px; left: 50%; margin-left: -2.5px; }
+.jj-pip.e  { right: 3px; top: 50%; margin-top: -2.5px; }
+.jj-pip.w  { left: 3px; top: 50%; margin-top: -2.5px; }
+.jj-pip.ne { top: 4px; right: 4px; }
+.jj-pip.nw { top: 4px; left: 4px; }
+.jj-pip.se { bottom: 4px; right: 4px; }
+.jj-pip.sw { bottom: 4px; left: 4px; }
 .jj-piece.p0 {
   background: var(--piece-me-bg, linear-gradient(160deg, #ffd98a, #e8a33d));
   color: var(--piece-me-ink, #3a2405);
@@ -95,12 +115,34 @@
   transform: rotate(180deg);
 }
 .jj-piece.king { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 3px 8px rgba(0, 0, 0, 0.45); }
+/* 큰범(승격) — 금빛 테로 새끼범과 구분, 핍도 1개→6개로 늘어난다 (p0/p1보다 뒤에 선언해야 이긴다) */
+.jj-piece.promoted {
+  box-shadow:
+    0 0 0 2px rgba(255, 196, 87, 0.85),
+    0 3px 10px rgba(0, 0, 0, 0.5);
+}
 .jj-piece.hand {
   width: 44px;
   height: 44px;
-  font-size: 22px;
+  font-size: 20px;
   cursor: pointer;
 }
+.jj-piece.hand .jj-pip {
+  width: 3.5px;
+  height: 3.5px;
+}
+.jj-piece.hand .jj-pip.n,
+.jj-piece.hand .jj-pip.s { margin-left: -1.75px; }
+.jj-piece.hand .jj-pip.e,
+.jj-piece.hand .jj-pip.w { margin-top: -1.75px; }
+.jj-piece.hand .jj-pip.ne,
+.jj-piece.hand .jj-pip.nw,
+.jj-piece.hand .jj-pip.se,
+.jj-piece.hand .jj-pip.sw { top: auto; }
+.jj-piece.hand .jj-pip.ne { top: 3px; right: 3px; }
+.jj-piece.hand .jj-pip.nw { top: 3px; left: 3px; }
+.jj-piece.hand .jj-pip.se { bottom: 3px; right: 3px; }
+.jj-piece.hand .jj-pip.sw { bottom: 3px; left: 3px; }
 .jj-piece.hand.p1 { transform: none; }
 .jj-piece.hand.selected { outline: 3px solid var(--accent); }
 
