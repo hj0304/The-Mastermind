@@ -11,17 +11,22 @@
  * - 안테 1, 스택 30. 레이즈 증가량 {1, 3, 5, 올인} — 엔진의 raiseOptions와 동일.
  * - 폴드: 팟 포기 + 내 카드가 10이면 페널티 min(10, 남은 스택). 콜: 쇼다운.
  * - 무승부는 팟 이월이지만 선이 교대라 기대값 중립으로 근사(0).
+ * - 블랙 핸드(덱당 2회): 아무도 카드를 못 본다 → 정보집합 키 `B|히스토리`.
+ *   같은 딜 집합에 대해 별도 트리로 학습한다 — 정상 핸드 키와 겹치지 않으므로
+ *   두 균형이 독립적으로 수렴한다. 페이오프(10 폴드 페널티 포함)는 동일.
+ *   레이즈는 1인 총 베팅 ≤ 안테+BLACK_MAX_RAISE로 제한(엔진과 동일) — 무정보
+ *   대칭 상황에선 올인이 지배전략이 되어 상한 없이는 동전 던지기가 되기 때문.
  *
  * 실행: npm run cfr:train  (esbuild 번들 후 node 실행)
  */
 
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const STACK = 30;
 const ANTE = 1;
 const TEN_PENALTY = 10;
+const BLACK_MAX_RAISE = 3; // 엔진 BLACK_MAX_RAISE와 동일해야 한다
 const RAISE_CAP = 6; // 한 핸드 최대 레이즈 횟수 (초과는 콜/폴드만 — 실전에서 도달 희박)
 const ITERATIONS = 6000;
 
@@ -36,8 +41,18 @@ interface Node {
 
 type ActionToken = 'f' | 'c' | '1' | '3' | '5' | 'a';
 
+/** 레이즈 상한 (엔진 legalInfo와 동일한 규칙 — 블랙 핸드는 총 베팅 캡 추가) */
+function maxRaiseOf(n: Node, black: boolean): number {
+  const p = n.toAct;
+  const o = (1 - p) as 0 | 1;
+  const callCost = n.inv[o] - n.inv[p];
+  let maxRaise = Math.min(STACK - n.inv[p] - callCost, STACK - n.inv[o]);
+  if (black) maxRaise = Math.min(maxRaise, Math.max(0, ANTE + BLACK_MAX_RAISE - n.inv[o]));
+  return maxRaise;
+}
+
 /** 현재 노드에서 가능한 행동 (엔진 legalInfo와 동일한 규칙) */
-function legalTokens(n: Node): ActionToken[] {
+function legalTokens(n: Node, black: boolean): ActionToken[] {
   const p = n.toAct;
   const o = (1 - p) as 0 | 1;
   const callCost = n.inv[o] - n.inv[p];
@@ -45,7 +60,7 @@ function legalTokens(n: Node): ActionToken[] {
   if (callCost > 0) out.push('f'); // 공짜 콜이 가능한데 폴드하는 것은 지배당하는 수 — 제외
   out.push('c');
   if (n.raises < RAISE_CAP) {
-    const maxRaise = Math.min(STACK - n.inv[p] - callCost, STACK - n.inv[o]);
+    const maxRaise = maxRaiseOf(n, black);
     for (const s of [1, 3, 5]) if (s < maxRaise) out.push(String(s) as ActionToken);
     if (maxRaise > 0) out.push('a');
   }
@@ -53,12 +68,11 @@ function legalTokens(n: Node): ActionToken[] {
 }
 
 /** 행동 적용. 종단이면 null 대신 페이오프 계산은 호출부에서 */
-function applyToken(n: Node, t: ActionToken): Node {
+function applyToken(n: Node, t: ActionToken, black: boolean): Node {
   const p = n.toAct;
   const o = (1 - p) as 0 | 1;
   if (t === 'f' || t === 'c') throw new Error('terminal token');
-  const callCost = n.inv[o] - n.inv[p];
-  const maxRaise = Math.min(STACK - n.inv[p] - callCost, STACK - n.inv[o]);
+  const maxRaise = maxRaiseOf(n, black);
   const amount = t === 'a' ? maxRaise : Math.min(Number(t), maxRaise);
   const inv: [number, number] = [...n.inv];
   inv[p] = inv[o] + amount;
@@ -110,11 +124,17 @@ function currentStrategy(is: InfoSet): number[] {
  * 기대값 CFR 재귀. reach0/reach1 = 각 플레이어의 도달 확률, w = 딜 확률.
  * 반환: 포지션 0 기준 기대 페이오프.
  */
-function cfr(n: Node, cards: [number, number], reach: [number, number], w: number, iter: number): number {
+function cfr(
+  n: Node,
+  cards: [number, number],
+  reach: [number, number],
+  w: number,
+  iter: number,
+  black: boolean,
+): number {
   const p = n.toAct;
-  const actions = legalTokens(n);
-  const oppCard = cards[1 - p];
-  const key = `${oppCard}|${n.hist}`;
+  const actions = legalTokens(n, black);
+  const key = black ? `B|${n.hist}` : `${cards[1 - p]}|${n.hist}`;
   const is = getInfoSet(key, actions);
   const strat = currentStrategy(is);
 
@@ -128,7 +148,7 @@ function cfr(n: Node, cards: [number, number], reach: [number, number], w: numbe
     } else {
       const nextReach: [number, number] = [...reach];
       nextReach[p] *= strat[i];
-      u = cfr(applyToken(n, t), cards, nextReach, w, iter);
+      u = cfr(applyToken(n, t, black), cards, nextReach, w, iter, black);
     }
     utils[i] = u;
     nodeUtil += strat[i] * u;
@@ -165,17 +185,24 @@ const root: Node = { inv: [ANTE, ANTE], toAct: 0, raises: 0, hist: '' };
 console.log('CFR+ 학습 시작 — 반복', ITERATIONS);
 const t0 = performance.now();
 let ev = 0;
+let evBlack = 0;
 for (let iter = 1; iter <= ITERATIONS; iter++) {
   ev = 0;
+  evBlack = 0;
   for (const d of allDeals) {
-    ev += cfr(root, d.cards, [1, 1], d.w, iter) * 1; // w는 cfr 내부 누적에 사용
+    ev += cfr(root, d.cards, [1, 1], d.w, iter, false); // w는 cfr 내부 누적에 사용
+    evBlack += cfr(root, d.cards, [1, 1], d.w, iter, true);
   }
   if (iter % 500 === 0) {
-    console.log(`iter ${iter} — 정보집합 ${infoSets.size}개, 선(先) 기대값 ${ev.toFixed(4)}칩`);
+    console.log(
+      `iter ${iter} — 정보집합 ${infoSets.size}개, 선(先) 기대값 ${ev.toFixed(4)}칩 · 블랙 ${evBlack.toFixed(4)}칩`,
+    );
   }
 }
 const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-console.log(`완료 (${elapsed}s) — 정보집합 ${infoSets.size}개, 균형 선 기대값 ${ev.toFixed(4)}칩/핸드`);
+console.log(
+  `완료 (${elapsed}s) — 정보집합 ${infoSets.size}개, 균형 선 기대값 ${ev.toFixed(4)}칩/핸드 · 블랙 ${evBlack.toFixed(4)}칩/핸드`,
+);
 
 // ---------- 평균 전략 저장 ----------
 
@@ -195,8 +222,8 @@ for (const [key, is] of infoSets) {
   policy[key] = entry;
 }
 
-const here = dirname(fileURLToPath(import.meta.url));
-const outPath = join(here, '..', '..', 'src', 'games', 'blind-poker', 'policy.json');
+// 저장소 루트에서 실행한다 (npm run cfr:train) — 번들 위치 기준 상대경로는 어긋난다
+const outPath = join(process.cwd(), 'src', 'games', 'blind-poker', 'policy.json');
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(
   outPath,

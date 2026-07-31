@@ -13,6 +13,12 @@
  * - 각자 "상대의 카드"는 매 핸드 항상 본다.
  * - 자기 카드는 쇼다운 때, 그리고 자기가 폴드했을 때(10 페널티 확인)만 공개된다.
  *   상대가 폴드해서 이긴 핸드의 내 카드는 나에게 영원히 비공개.
+ *
+ * 블랙 핸드 (원작에 없는 변형 킥 — 구현 결정은 docs/GAME_RULES.md §3):
+ * - 매 덱(10핸드)마다 정확히 2회, 위치는 무작위이며 딜 시점에 공개된다.
+ * - 블랙 핸드 동안은 상대 카드도 보이지 않고, 핸드가 끝나도 카드가 영원히 비공개다
+ *   (카운팅 차단). 10 폴드 페널티 룰은 동일하되 레이즈는 BLACK_MAX_RAISE로 제한된다.
+ * - 유일한 예외: 10 폴드 페널티는 칩 이동으로 드러나므로 그 카드(10)만 카운팅에 편입된다.
  */
 
 export type PlayerId = 0 | 1;
@@ -20,6 +26,13 @@ export type PlayerId = 0 | 1;
 export const STARTING_STACK = 30;
 export const ANTE = 1;
 export const TEN_PENALTY = 10;
+export const BLACK_HANDS_PER_DECK = 2;
+/**
+ * 블랙 핸드 레이즈 상한 — 1인 총 베팅이 안테 + 이 값을 넘을 수 없다.
+ * 무정보 대칭 상황은 쇼다운 기대값이 0이라 올인이 지배전략이 된다(균형 학습으로 실측).
+ * 상한이 없으면 블랙 핸드가 스택 전체를 건 동전 던지기가 되므로 판돈을 제한한다.
+ */
+export const BLACK_MAX_RAISE = 3;
 
 export type HandOutcome = 'showdown' | 'fold' | 'draw';
 
@@ -35,6 +48,8 @@ export interface HandRecord {
   potWon: number;
   /** 10 폴드 페널티가 발생했는가 */
   penalty: boolean;
+  /** 블랙 핸드였는가 (카드 영구 비공개) */
+  black: boolean;
 }
 
 export type BpPhase = 'betting' | 'result' | 'gameover';
@@ -61,6 +76,10 @@ export interface BpState {
   handNo: number;
   /** 현재 덱이 시작된 핸드 번호 (카운팅은 이 핸드부터 유효) */
   deckStartHand: number;
+  /** 현재 덱에서 블랙 핸드가 되는 핸드 오프셋 (0..9) — 딜 시점까지 비공개 */
+  blackSlots: number[];
+  /** 현재 핸드가 블랙 핸드인가 */
+  isBlack: boolean;
   history: HandRecord[];
   /** 이번 핸드의 행동 로그 (AI 추론용): [행위자, 행동] */
   actions: Array<{ player: PlayerId; action: BpAction }>;
@@ -77,6 +96,14 @@ function freshDeck(): number[] {
   return deck;
 }
 
+/** 덱(10핸드)당 블랙 핸드 오프셋 2개를 무작위로 뽑는다 */
+function pickBlackSlots(): number[] {
+  const a = Math.floor(Math.random() * 10);
+  let b = Math.floor(Math.random() * 9);
+  if (b >= a) b += 1;
+  return [a, b];
+}
+
 /** first를 주면 그 쪽이 첫 핸드의 선 (동전 던지기 결과) */
 export function createGame(first?: PlayerId): BpState {
   const base: BpState = {
@@ -90,6 +117,8 @@ export function createGame(first?: PlayerId): BpState {
     phase: 'betting',
     handNo: 0,
     deckStartHand: 1,
+    blackSlots: pickBlackSlots(),
+    isBlack: false,
     history: [],
     actions: [],
   };
@@ -103,12 +132,15 @@ function dealHand(s: BpState): BpState {
   }
   let deck = s.deck;
   let deckStartHand = s.deckStartHand;
+  let blackSlots = s.blackSlots;
   if (deck.length < 2) {
     deck = freshDeck();
     deckStartHand = s.handNo + 1; // 새 덱 → 카운팅 리셋
+    blackSlots = pickBlackSlots();
   }
   const cards: [number, number] = [deck[0], deck[1]];
   const firstActor = s.handNo === 0 ? s.firstActor : ((1 - s.firstActor) as PlayerId);
+  const handNo = s.handNo + 1;
   return {
     ...s,
     deck: deck.slice(2),
@@ -118,8 +150,10 @@ function dealHand(s: BpState): BpState {
     firstActor,
     toAct: firstActor,
     phase: 'betting',
-    handNo: s.handNo + 1,
+    handNo,
     deckStartHand,
+    blackSlots,
+    isBlack: blackSlots.includes(handNo - deckStartHand),
     actions: [],
   };
 }
@@ -144,10 +178,14 @@ export function legalInfo(s: BpState): LegalInfo {
   const o = (1 - p) as PlayerId;
   const callCost = Math.min(s.invested[o] - s.invested[p], s.stacks[p]);
   // 레이즈 상한: 내가 낼 수 있는 만큼 + 상대가 따라올 수 있는 만큼
-  const maxRaise = Math.max(
+  let maxRaise = Math.max(
     0,
     Math.min(s.stacks[p] - callCost, s.stacks[o]),
   );
+  // 블랙 핸드: 1인 총 베팅 ≤ 안테 + BLACK_MAX_RAISE (레이즈는 inv[o]+amount로 계산됨)
+  if (s.isBlack) {
+    maxRaise = Math.min(maxRaise, Math.max(0, ANTE + BLACK_MAX_RAISE - s.invested[o]));
+  }
   const raiseOptions = [1, 3, 5, maxRaise]
     .filter((x, i, arr) => x > 0 && x <= maxRaise && arr.indexOf(x) === i)
     .sort((a, b) => a - b);
@@ -175,7 +213,7 @@ export function act(s: BpState, a: BpAction): BpState {
     next.invested = [0, 0];
     next.history = [
       ...s.history,
-      { cards: s.cards, outcome: 'fold', folder: p, winner: o, potWon, penalty },
+      { cards: s.cards, outcome: 'fold', folder: p, winner: o, potWon, penalty, black: s.isBlack },
     ];
     next.phase = 'result';
     return next;
@@ -210,7 +248,7 @@ function showdown(s: BpState): BpState {
     next.invested = [0, 0];
     next.history = [
       ...s.history,
-      { cards: s.cards, outcome: 'draw', potWon: 0, penalty: false },
+      { cards: s.cards, outcome: 'draw', potWon: 0, penalty: false, black: s.isBlack },
     ];
   } else {
     const winner: PlayerId = c0 > c1 ? 0 : 1;
@@ -221,7 +259,7 @@ function showdown(s: BpState): BpState {
     next.invested = [0, 0];
     next.history = [
       ...s.history,
-      { cards: s.cards, outcome: 'showdown', winner, potWon, penalty: false },
+      { cards: s.cards, outcome: 'showdown', winner, potWon, penalty: false, black: s.isBlack },
     ];
   }
   next.phase = 'result';
@@ -243,18 +281,23 @@ export function gameWinner(s: BpState): PlayerId | null {
  * `viewer`가 지금까지 본 카드들 (카운팅용).
  * - 상대의 카드: 모든 핸드에서 항상 봄 (현재 핸드 포함)
  * - 자기 카드: 쇼다운/무승부 핸드 + 자기가 폴드한 핸드에서만 봄
+ * - 블랙 핸드의 카드: 영원히 못 봄 — 단 10 폴드 페널티는 칩 이동으로 공개된다
  */
 export function seenCards(s: BpState, viewer: PlayerId): number[] {
   const seen: number[] = [];
   // 현재 덱에서 진행된 핸드만 카운팅 대상 (history[i]는 핸드 i+1)
   for (const h of s.history.slice(s.deckStartHand - 1)) {
+    if (h.black) {
+      if (h.penalty && h.folder !== undefined) seen.push(h.cards[h.folder]); // 페널티 = 10 공개
+      continue;
+    }
     seen.push(h.cards[1 - viewer]); // 상대 카드는 항상 봤음
     if (h.outcome !== 'fold' || h.folder === viewer) {
       seen.push(h.cards[viewer]); // 쇼다운·무승부·본인 폴드 시 내 카드 공개
     }
   }
-  if (s.phase === 'betting') {
-    seen.push(s.cards[1 - viewer]); // 현재 핸드 상대 카드
+  if (s.phase === 'betting' && !s.isBlack) {
+    seen.push(s.cards[1 - viewer]); // 현재 핸드 상대 카드 (블랙 핸드에선 안 보임)
   }
   return seen;
 }

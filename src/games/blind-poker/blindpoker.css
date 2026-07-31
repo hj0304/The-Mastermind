@@ -25,3 +25,17 @@
   max-width: 440px;
   line-height: 1.7;
 }
+
+/* 블랙 핸드 배너 — 액션 패널 상단 (pk-scope 무드 변수 사용) */
+.bp-black-banner {
+  align-self: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--ink);
+  background: var(--bg);
+  color: var(--ink);
+  white-space: nowrap;
+}

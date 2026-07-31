@@ -20,7 +20,8 @@
     "cfr:train:holdem": "esbuild scripts/cfr/train-blind-holdem.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/train-holdem.mjs && node scripts/cfr/.out/train-holdem.mjs",
     "cfr:eval:holdem": "esbuild scripts/cfr/eval-blind-holdem.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/eval-holdem.mjs && node scripts/cfr/.out/eval-holdem.mjs",
     "rules:audit": "esbuild scripts/rules/audit-hidden-formula.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/rules-audit.mjs && node scripts/cfr/.out/rules-audit.mjs",
-    "rules:audit:holdem": "esbuild scripts/rules/audit-blind-holdem.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/holdem-audit.mjs && node scripts/cfr/.out/holdem-audit.mjs"
+    "rules:audit:holdem": "esbuild scripts/rules/audit-blind-holdem.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/holdem-audit.mjs && node scripts/cfr/.out/holdem-audit.mjs",
+    "rules:audit:black": "esbuild scripts/rules/audit-black-hand.ts --bundle --platform=node --format=esm --outfile=scripts/cfr/.out/black-audit.mjs && node scripts/cfr/.out/black-audit.mjs"
   },
   "dependencies": {
     "nostr-tools": "^2.23.12",

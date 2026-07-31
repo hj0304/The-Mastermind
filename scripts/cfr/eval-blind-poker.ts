@@ -39,8 +39,8 @@ let policyHit = 0;
 
 /** 학습 정책 에이전트 — 정보집합 조회 후 확률 표집, 없으면 휴리스틱 폴백 */
 function policyAction(s: BpState, me: PlayerId): BpAction {
-  const oppCard = s.cards[1 - me];
-  const key = `${oppCard}|${histOf(s)}`;
+  // 블랙 핸드는 상대 카드도 안 보인다 — 키 접두 'B' (게임 AI와 동일)
+  const key = s.isBlack ? `B|${histOf(s)}` : `${s.cards[1 - me]}|${histOf(s)}`;
   const entry = policy[key];
   if (!entry) {
     policyMiss++;

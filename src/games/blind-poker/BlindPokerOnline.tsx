@@ -30,10 +30,25 @@ type NetMsg =
   | { t: 'ready' } | { t: 'view'; v: BpView } | { t: 'act'; a: BpAction } | { t: 'next' };
 
 function viewFor(s: BpState, seat: PlayerId): BpView {
-  const revealed = s.phase !== 'betting';
+  // 블랙 핸드는 종료 후에도 카드가 영원히 비공개 — 아예 전송하지 않는다
+  const revealed = s.phase !== 'betting' && !s.isBlack;
   const cards = [s.cards[0], s.cards[1]] as [number, number];
   if (!revealed) cards[seat] = HIDDEN;
-  return { s: { ...s, deck: [], cards }, myCardShown: revealed };
+  if (s.isBlack) cards[1 - seat] = HIDDEN;
+  // 과거 블랙 핸드와 "상대 폴드로 영영 못 보는 내 카드"도 클라이언트에 노출 금지
+  const history = s.history.map((h) => {
+    const hc = [h.cards[0], h.cards[1]] as [number, number];
+    if (h.black) {
+      hc[0] = HIDDEN;
+      hc[1] = HIDDEN;
+      if (h.penalty && h.folder !== undefined) hc[h.folder] = 10; // 페널티 = 10 공개
+    } else if (h.outcome === 'fold' && h.folder !== seat) {
+      hc[seat] = HIDDEN;
+    }
+    return { ...h, cards: hc };
+  });
+  // 블랙 슬롯 위치도 딜 전까지 비밀이다
+  return { s: { ...s, deck: [], cards, history, blackSlots: [] }, myCardShown: revealed };
 }
 
 export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onExit: () => void }) {
@@ -178,13 +193,20 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
 
   const panel = (
     <>
+      {state.phase === 'betting' && state.isBlack && !myTurn && (
+        <div className="bp-black-banner">🂠 블랙 핸드 — 카드도 결과도 공개되지 않습니다</div>
+      )}
       {state.phase === 'betting' && !myTurn && <div className="pk-thinking">상대가 고민 중…</div>}
       {myTurn && info && (
         <>
           <div className="pk-status">
-            {info.callCost > 0
-              ? `콜하려면 ${info.callCost} 필요 · 10을 들고 폴드하면 −10`
-              : '베팅 동액 — 콜하면 즉시 공개됩니다'}
+            {state.isBlack
+              ? info.callCost > 0
+                ? `🂠 블랙 핸드 — 콜하려면 ${info.callCost} 필요 · 10 페널티 유지`
+                : '🂠 블랙 핸드 — 콜해도 카드는 공개되지 않습니다'
+              : info.callCost > 0
+                ? `콜하려면 ${info.callCost} 필요 · 10을 들고 폴드하면 −10`
+                : '베팅 동액 — 콜하면 즉시 공개됩니다'}
           </div>
           {!noRaise && <BetSlider value={rv} min={minTo} max={maxTo} onChange={setRaiseTo} />}
           <div className="pk-actions three">
@@ -206,14 +228,15 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
       )}
       {state.phase === 'result' && lastHand && (
         <PkResult
-          left={String(lastHand.cards[opp])}
+          left={lastHand.black ? '?' : String(lastHand.cards[opp])}
           right={
-            lastHand.outcome !== 'fold' || lastHand.folder === me
+            !lastHand.black && (lastHand.outcome !== 'fold' || lastHand.folder === me)
               ? String(lastHand.cards[me])
               : '?'
           }
           text={
-            lastHand.outcome === 'draw'
+            (lastHand.black ? '블랙 핸드 — 카드는 영원히 비공개 · ' : '') +
+            (lastHand.outcome === 'draw'
               ? '무승부 — 팟이 다음 핸드로 이월됩니다'
               : lastHand.outcome === 'showdown'
                 ? lastHand.winner === me
@@ -221,7 +244,7 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
                   : `패배 −${lastHand.potWon}칩`
                 : lastHand.folder === me
                   ? `폴드 — 상대가 팟을 가져갑니다${lastHand.penalty ? ' (10 페널티 −10칩)' : ''}`
-                  : `상대 폴드 — +${lastHand.potWon}칩${lastHand.penalty ? ' (상대 10 페널티)' : ''}`
+                  : `상대 폴드 — +${lastHand.potWon}칩${lastHand.penalty ? ' (상대 10 페널티)' : ''}`)
           }
           onNext={proceedNextHand}
         />
@@ -245,12 +268,18 @@ export default function BlindPokerOnline({ room, onExit }: { room: NetRoom; onEx
       handNo={state.handNo}
       opp={{ name: '상대', turn: state.phase === 'betting' && state.toAct === opp, stack: state.stacks[opp] }}
       me={{ name: '나', turn: state.phase === 'betting' && state.toAct === me, stack: state.stacks[me] }}
-      oppCard={<PkCard value={state.cards[opp]} caption="내게만 보임" />}
+      oppCard={
+        state.isBlack ? (
+          <PkCard hidden caption="블랙 핸드" captionAccent />
+        ) : (
+          <PkCard value={state.cards[opp]} caption="내게만 보임" />
+        )
+      }
       myCard={
         view.myCardShown ? (
           <PkCard value={state.cards[me]} caption="공개됨" />
         ) : (
-          <PkCard hidden caption="나만 못 봄" captionAccent />
+          <PkCard hidden caption={state.isBlack ? '블랙 핸드' : '나만 못 봄'} captionAccent />
         )
       }
       oppBet={state.invested[opp]}
