@@ -118,7 +118,7 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
       <div className="jj-root">
         <GameHeader onExit={onExit} />
         <OnlinePanel
-          gameName="밀림장기"
+          gameName="나포전"
           onReady={(room) => setOnline(room)}
           onCancel={() => setOnline(null)}
         />
@@ -145,13 +145,13 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
       <div className="jj-root">
         <GameHeader onExit={onExit} />
         <div className="jj-setup">
-          <h2>밀림장기</h2>
+          <h2>나포전(拿捕戰)</h2>
           <p className="jj-rule-summary">
-            3×4 백두 밀림. <b>호랑이🐅</b>는 8방향, <b>곰🐻</b>은 상하좌우, <b>표범🐆</b>은 대각,
-            <b> 새끼범🐯</b>은 앞으로 한 칸 — 상대 진영에 닿으면 <b>큰범</b>으로 자랍니다. 잡은
-            짐승은 길들여서 빈 칸에 다시 풀어놓을 수 있습니다(상대 진영 제외). 상대 호랑이를
-            잡거나, 내 호랑이가 상대 진영에서 한 턴을 버티면 승리! <b>타일의 점</b>이 그 짐승의
-            이동 방향입니다.
+            맞붙은 두 해적선, 3×4 뱃전. <b>선장🏴‍☠️</b>은 8방향, <b>갑판장⚓</b>은 상하좌우,
+            <b> 항해사🧭</b>는 대각, <b>노잡이🛶</b>는 앞으로 한 칸 — 적함에 오르면{' '}
+            <b>칼잡이⚔️</b>가 됩니다. 잡은 선원은 나포되어 빈 칸에 다시 태울 수 있습니다(적함
+            제외). 상대 선장을 잡거나, 내 선장이 적함에서 한 턴을 버텨 깃발을 꽂으면 승리!{' '}
+            <b>타일의 점</b>이 그 선원의 이동 방향입니다.
           </p>
           <div className="setup-stats">
             <span className="extreme-tag">EXTREME AI</span>
@@ -251,8 +251,8 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
                   : '패배…'}
             </h2>
             <p>
-              {state.result.reason === 'capture' && '호랑이가 잡혔습니다'}
-              {state.result.reason === 'territory' && '호랑이가 상대 진영에서 살아남았습니다'}
+              {state.result.reason === 'capture' && '선장이 잡혔습니다'}
+              {state.result.reason === 'territory' && '적함 점거 — 선장이 깃발을 꽂았습니다'}
               {state.result.reason === 'repetition' && '동일 국면 3회 반복'}
             </p>
             <div className="end-actions">
@@ -310,9 +310,9 @@ function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrend
       <button className="back-btn" onClick={onExit}>
         ← 로비
       </button>
-      <span className="game-title">밀림장기</span>
+      <span className="game-title">나포전</span>
       {surrender && <SurrenderButton gameId="jungle-janggi" onExit={onExit} />}
-      <RuleBookButton gameId="jungle-janggi" gameName="밀림장기" className="rb-btn header-rb" />
+      <RuleBookButton gameId="jungle-janggi" gameName="나포전" className="rb-btn header-rb" />
     </header>
   );
 }

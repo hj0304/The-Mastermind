@@ -31,11 +31,12 @@ export interface GameMeta {
 
 export const GAMES: GameMeta[] = [
   {
+    // id는 전적·라우트 호환을 위해 유지 (표기만 나포전으로 리테마)
     id: 'jungle-janggi',
     genre: 'board',
-    icon: '🐯',
-    name: '밀림장기',
-    tagline: '3×4 백두 밀림 — 길들인 짐승은 내 편이 된다',
+    icon: '🏴‍☠️',
+    name: '나포전(拿捕戰)',
+    tagline: '3×4 뱃전 — 나포한 선원은 한 배를 탄다',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
     status: 'playable',
     origin: '동물장기(どうぶつしょうぎ) 계열 미니 장기',
