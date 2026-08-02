@@ -9,7 +9,7 @@ import './jungle.css';
 import '../../net/online.css';
 
 /**
- * 나포전 온라인 대전 — 완전 공개 정보 게임이라 호스트가 전체 상태를 복제 전송한다.
+ * 4·3체스 온라인 대전 — 완전 공개 정보 게임이라 호스트가 전체 상태를 복제 전송한다.
  * 액션 검증은 호스트 엔진에서 수행(호스트 권위).
  * 보드는 좌석별로 뒤집어 렌더링해 양쪽 모두 자기 진영이 아래에 오게 한다.
  */
@@ -249,8 +249,8 @@ export default function JungleJanggiOnline({ room, onExit }: { room: NetRoom; on
               {state.result.winner === null ? '무승부' : state.result.winner === me ? '🏆 승리!' : '패배…'}
             </h2>
             <p>
-              {state.result.reason === 'capture' && '선장이 잡혔습니다'}
-              {state.result.reason === 'territory' && '적함 점거 — 선장이 깃발을 꽂았습니다'}
+              {state.result.reason === 'capture' && '킹이 잡혔습니다'}
+              {state.result.reason === 'territory' && '킹이 상대 진영에서 살아남았습니다'}
               {state.result.reason === 'repetition' && '동일 국면 3회 반복'}
             </p>
             <div className="end-actions">
@@ -318,7 +318,7 @@ function GameHeader({ onExit }: { onExit: () => void }) {
   return (
     <header className="game-header">
       <button className="back-btn" onClick={onExit}>← 로비</button>
-      <span className="game-title">나포전 · 온라인</span>
+      <span className="game-title">4·3체스 · 온라인</span>
     </header>
   );
 }
