@@ -20,23 +20,11 @@ import {
   isQuattro,
   virtualResponse,
 } from './engine.ts';
+import type { MetaCode } from './infoset.ts';
+import { largestCompatibleSubset, mullKey, openKey, xchgKey, xchgMetas } from './infoset.ts';
+import { lookupPolicy } from './policy.ts';
 
 // ---------- 손패 평가 ----------
-
-/** 색·숫자 모두 겹치지 않는 최대 부분집합 크기 */
-function largestCompatibleSubset(cards: QCard[]): number {
-  let best = 0;
-  const n = cards.length;
-  for (let mask = 0; mask < 1 << n; mask++) {
-    const subset = cards.filter((_, i) => mask & (1 << i));
-    const colors = new Set(subset.map((c) => c.color));
-    const nums = new Set(subset.map((c) => c.num));
-    if (colors.size === subset.length && nums.size === subset.length) {
-      best = Math.max(best, subset.length);
-    }
-  }
-  return best;
-}
 
 /** 최종 4장 후보 평가: 테트라 여부 > 양립 부분집합 크기 > 합계 */
 export function evalFour(cards: QCard[]): number {
@@ -142,8 +130,8 @@ export function aiWantsMulligan(hand: QCard[]): boolean {
   return isQuattro(hand) ? false : cardSum(hand) < 12;
 }
 
-/** 오픈할 카드: 목표 테트라에 포함되는 카드 중 가장 높은 숫자 (0은 최후순위) */
-export function aiChooseOpen(s: QState, me: PlayerId): number {
+/** 오픈 후보 풀: 목표 테트라 조합의 카드들 (0 카드는 최후순위로 제외) */
+function bestOpenPool(s: QState, me: PlayerId): QCard[] {
   const hand = s.hands[me];
   const opens = s.opens[me];
   // 오픈과 양립하며 손패에서 함께 테트라를 노릴 수 있는 최선 조합 탐색
@@ -164,16 +152,42 @@ export function aiChooseOpen(s: QState, me: PlayerId): number {
   const pickFrom = bestCombo.length > 0 ? bestCombo : hand;
   // 0 카드는 되도록 오픈하지 않는다 (합계 손해 고정)
   const nonZero = pickFrom.filter((c) => c.color !== 'K');
-  const pool = nonZero.length > 0 ? nonZero : pickFrom;
+  return nonZero.length > 0 ? nonZero : pickFrom;
+}
+
+/** 오픈할 카드: 목표 테트라에 포함되는 카드 중 가장 높은 숫자 (0은 최후순위) */
+export function aiChooseOpen(s: QState, me: PlayerId): number {
+  const pool = bestOpenPool(s, me);
   return [...pool].sort((a, b) => b.num - a.num)[0].id;
+}
+
+/** 오픈 변형: 같은 후보 풀에서 가장 낮은 숫자 — 높은 패를 손에 숨기는 선택 */
+export function aiChooseOpenLow(s: QState, me: PlayerId): number {
+  const pool = bestOpenPool(s, me);
+  return [...pool].sort((a, b) => a.num - b.num)[0].id;
 }
 
 export type AiAction =
   | { type: 'decline' }
   | { type: 'exchange'; virtualIdx: number; giveCardId: number };
 
-export function aiChooseAction(s: QState, me: PlayerId): AiAction {
-  if (currentActor(s) !== me) throw new Error('not AI turn');
+export interface ExchangeChoice {
+  virtualIdx: number;
+  giveCardId: number;
+  score: number;
+}
+
+/**
+ * 미방문 가상 × 줄 카드 전수 스캔으로 기대값 최선의 교환을 찾는다.
+ * zeroBonus: 0 주입 가산점(기존 휴리스틱의 성향) 적용 여부.
+ * zeroInject: true면 "0 카드를 상대 미방문 가상에게" 조합만 스캔 (메타 z 전용).
+ * samples: 가상 응답 분포 표본 수 — 학습·실전의 메타 해석은 같은 값을 쓴다.
+ */
+export function scanExchanges(
+  s: QState,
+  me: PlayerId,
+  opts: { zeroBonus: boolean; zeroInject?: boolean; samples?: number },
+): ExchangeChoice | null {
   const know = virtualKnowledgeFor(s, me);
   const pool = candidatePool(s, me, know);
   const opp = (1 - me) as PlayerId;
@@ -181,14 +195,15 @@ export function aiChooseAction(s: QState, me: PlayerId): AiAction {
   const oppOpenColors = new Set(s.opens[opp].map((c) => c.color));
   const oppOpenNums = new Set(s.opens[opp].map((c) => c.num));
 
-  let best: AiAction = { type: 'decline' };
-  let bestScore = -Infinity;
+  let best: ExchangeChoice | null = null;
 
   for (let v = 0; v < 6; v++) {
     if (s.exchanged[me][v]) continue;
-    const responses = sampleResponses(s, me, v, know, pool);
+    if (opts.zeroInject && s.exchanged[opp][v]) continue;
+    const responses = sampleResponses(s, me, v, know, pool, opts.samples ?? 40);
     if (responses.length === 0) continue;
     for (const give of s.hands[me]) {
+      if (opts.zeroInject && give.color !== 'K') continue;
       // 교환 후 기대 평가
       let evSum = 0;
       for (const r of responses) {
@@ -202,25 +217,99 @@ export function aiChooseAction(s: QState, me: PlayerId): AiAction {
       let score = evSum / responses.length - curEval;
 
       // 0 주입: 상대가 아직 방문 안 한 가상에게 0을 넘기면 상대가 0을 받을 위험 생성
-      if (give.color === 'K' && !s.exchanged[opp][v]) score += 60;
+      if (opts.zeroBonus && give.color === 'K' && !s.exchanged[opp][v]) score += 60;
       // 상대 오픈과 양립하는 고득점 카드를 건네는 건 상대를 돕는 일 —
       // 단, 내 완성(부분집합 개선)을 막을 만큼 크면 안 되므로 소폭만 감점
       if (!oppOpenColors.has(give.color) && !oppOpenNums.has(give.num) && give.num >= 4) {
         score -= give.num * 3;
       }
-      if (score > bestScore) {
-        bestScore = score;
-        best = { type: 'exchange', virtualIdx: v, giveCardId: give.id };
+      if (!best || score > best.score) {
+        best = { virtualIdx: v, giveCardId: give.id, score };
       }
     }
   }
+  return best;
+}
+
+export function aiChooseAction(s: QState, me: PlayerId): AiAction {
+  if (currentActor(s) !== me) throw new Error('not AI turn');
+  const best = scanExchanges(s, me, { zeroBonus: true });
 
   const unvisited = s.exchanged[me].filter((x) => !x).length;
-  if (best.type === 'exchange') {
+  if (best) {
     // 방문 의무가 남았으면 다소 손해라도 소화, 아니면 이득일 때만
     const threshold = unvisited > 0 ? -30 : 5;
-    if (bestScore >= threshold) return best;
+    if (best.score >= threshold) {
+      return { type: 'exchange', virtualIdx: best.virtualIdx, giveCardId: best.giveCardId };
+    }
   }
   if (canDecline(s, me)) return { type: 'decline' };
-  return best.type === 'exchange' ? best : { type: 'decline' };
+  return best
+    ? { type: 'exchange', virtualIdx: best.virtualIdx, giveCardId: best.giveCardId }
+    : { type: 'decline' };
+}
+
+// ---------- 메타 행동 해석 (학습·평가·실전 공용 — 모델 불일치 차단) ----------
+
+/** 메타 해석의 가상 응답 표본 수 — 학습·실전이 같은 값을 써야 한다 */
+export const META_SAMPLES = 16;
+
+/** 오픈 메타 → 오픈할 카드 id */
+export function resolveOpenMeta(s: QState, me: PlayerId, code: MetaCode): number {
+  return code === 'l' ? aiChooseOpenLow(s, me) : aiChooseOpen(s, me);
+}
+
+/** 교환 메타 → 엔진 행동 */
+export function resolveXchgMeta(s: QState, me: PlayerId, code: MetaCode): AiAction {
+  if (code === 'p') return { type: 'decline' };
+  if (code === 'z') {
+    const z = scanExchanges(s, me, { zeroBonus: false, zeroInject: true, samples: META_SAMPLES });
+    if (z) return { type: 'exchange', virtualIdx: z.virtualIdx, giveCardId: z.giveCardId };
+    // z가 키 플래그상 가능했는데 스캔이 비면(이론상 없음) e로 폴백
+  }
+  const e = scanExchanges(s, me, { zeroBonus: false, samples: META_SAMPLES });
+  if (e) return { type: 'exchange', virtualIdx: e.virtualIdx, giveCardId: e.giveCardId };
+  return { type: 'decline' };
+}
+
+// ---------- 정책 우선 선택 (게임 화면이 쓰는 진입점) ----------
+
+function samplePolicyCode(key: string, legal: MetaCode[]): MetaCode | null {
+  const entry = lookupPolicy(key);
+  if (!entry) return null;
+  // 저장 항목 중 현재 합법 메타만 남기고 재정규화
+  const pairs = Object.entries(entry).filter(([c]) => legal.includes(c as MetaCode));
+  const total = pairs.reduce((a, [, p]) => a + p, 0);
+  if (total <= 0) return null;
+  let r = Math.random() * total;
+  for (const [c, p] of pairs) {
+    r -= p;
+    if (r <= 0) return c as MetaCode;
+  }
+  return pairs[pairs.length - 1][0] as MetaCode;
+}
+
+/** 멀리건 결정 — 학습 정책 우선, 미적중이면 기존 휴리스틱 */
+export function chooseMulligan(s: QState, me: PlayerId): boolean {
+  const code = samplePolicyCode(mullKey(s.hands[me], s.mulligansUsed[me]), ['k', 'm']);
+  if (code) return code === 'm';
+  return aiWantsMulligan(s.hands[me]);
+}
+
+/** 오픈 결정 — 학습 정책 우선 */
+export function chooseOpen(s: QState, me: PlayerId): number {
+  const code = samplePolicyCode(openKey(s, me), ['h', 'l']);
+  return resolveOpenMeta(s, me, code ?? 'h');
+}
+
+/** 교환 결정 — 학습 정책 우선 */
+export function chooseExchange(s: QState, me: PlayerId): AiAction {
+  const metas = xchgMetas(s, me);
+  if (metas.length === 1) {
+    // 강제수 — 학습기와 동일하게 정책 조회 없이 바로 실행
+    return metas[0] === 'p' ? { type: 'decline' } : resolveXchgMeta(s, me, metas[0]);
+  }
+  const code = samplePolicyCode(xchgKey(s, me), metas);
+  if (code) return resolveXchgMeta(s, me, code);
+  return aiChooseAction(s, me);
 }

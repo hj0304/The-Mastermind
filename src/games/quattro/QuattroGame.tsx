@@ -13,7 +13,8 @@ import {
   mulligan,
   openCard,
 } from './engine.ts';
-import { aiChooseAction, aiChooseOpen, aiWantsMulligan } from './ai.ts';
+import { chooseExchange, chooseMulligan, chooseOpen } from './ai.ts';
+import { loadPolicy } from './policy.ts';
 import { getRecord, recordResult } from '../../stats.ts';
 import CoinToss from '../shared/CoinToss.tsx';
 import { RuleBookButton } from '../shared/RuleBook.tsx';
@@ -41,6 +42,11 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
   /** 동전이 떨어지면 begin()으로 실제 대국을 시작한다 */
   const [toss, setToss] = useState<PlayerId | null>(null);
 
+  // MCCFR 자가학습 정책(코드 분할 청크)을 화면 진입 시 미리 로드
+  useEffect(() => {
+    void loadPolicy();
+  }, []);
+
   function startGame() {
     setToss(0); // 값은 의미 없다 — 선공은 동전을 던져 정해진다
   }
@@ -61,7 +67,7 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
       const timer = setTimeout(() => {
         setState((s) => {
           if (!s || s.phase !== 'mulligan' || s.mulliganDone[AI]) return s;
-          if (s.mulligansUsed[AI] < 2 && aiWantsMulligan(s.hands[AI])) return mulligan(s, AI);
+          if (s.mulligansUsed[AI] < 2 && chooseMulligan(s, AI)) return mulligan(s, AI);
           return keepHand(s, AI);
         });
       }, 500);
@@ -73,7 +79,7 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
       const timer = setTimeout(() => {
         setState((s) => {
           if (!s || s.phase !== 'opening' || s.pendingOpen[0] !== AI) return s;
-          return openCard(s, AI, aiChooseOpen(s, AI));
+          return openCard(s, AI, chooseOpen(s, AI));
         });
         setAiThinking(false);
       }, 800);
@@ -85,7 +91,7 @@ export default function QuattroGame({ onExit }: { onExit: () => void }) {
       const timer = setTimeout(() => {
         setState((s) => {
           if (!s || s.phase !== 'exchange' || currentActor(s) !== AI) return s;
-          const a = aiChooseAction(s, AI);
+          const a = chooseExchange(s, AI);
           return a.type === 'decline' ? decline(s, AI) : exchange(s, AI, a.virtualIdx, a.giveCardId);
         });
         setAiThinking(false);
