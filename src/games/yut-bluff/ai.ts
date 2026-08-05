@@ -18,6 +18,9 @@ import {
   remainToGoal,
   walkBluff,
 } from './engine.ts';
+import type { MetaCode } from './infoset.ts';
+import { declKey, declMetas, respKey } from './infoset.ts';
+import { lookupPolicy } from './policy.ts';
 
 // ---------- 성향 학습 ----------
 
@@ -278,4 +281,112 @@ export function chooseAiResponse(s: BState, me: PlayerId): boolean {
     (1 - pLie) * (theirGain + winThreat + myPenalty);
 
   return evChallenge + (Math.random() - 0.5) * 8 > evAccept;
+}
+
+// ---------- 메타 행동 해석 (학습·평가·실전 공용 — 모델 불일치 차단) ----------
+//
+// 학습이 담당하는 것은 "진실이냐 거짓이냐, 거짓이면 얼마나 크게" 라는 카테고리
+// 선택뿐이다. 어느 말을 어디로 보낼지는 균형이 아니라 위치 최적화 문제이므로
+// 아래 해석기가 기존 평가 함수(moveEvalGain)로 결정한다 — 난수를 쓰지 않는다.
+
+/** 카테고리에 해당하는 선언 값 후보 */
+function valuesForMeta(roll: number, code: MetaCode): number[] {
+  if (code === 't') return [roll];
+  if (code === 'l') return [1, 2, 3].filter((v) => v !== roll);
+  if (code === 'h') return [4, 5].filter((v) => v !== roll);
+  return [];
+}
+
+/** 이 주사위로 완주해 승리를 확정할 수 있는가 (선언 키의 winReach 자리) */
+export function canWinByDeclaring(s: BState, me: PlayerId): boolean {
+  if (s.pieces[me].filter((x) => x === GOAL).length !== 1) return false;
+  for (const from of movableFroms(s, me)) {
+    for (const branch of branchOptions(from)) {
+      for (let v = 1; v <= 5; v++) {
+        if (walkBluff(from, v, branch) === GOAL) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** 이 선언을 믿어주면 상대가 그대로 승리하는가 (응답 키의 winThreat 자리) */
+export function declarationWins(s: BState, roller: PlayerId): boolean {
+  const d = s.declaration;
+  if (!d || d.value === 0) return false;
+  if (s.pieces[roller].filter((x) => x === GOAL).length !== 1) return false;
+  return walkBluff(d.from, d.value, d.branch) === GOAL;
+}
+
+/** 선언 메타 → 실제 선언 (카테고리 안에서는 위치 이득 최대) */
+export function resolveDeclMeta(s: BState, me: PlayerId, code: MetaCode): Declaration {
+  const myAlive = countAlive(s.pieces[me]);
+
+  if (code === 'k') {
+    // 꽝 신고 — 잃는 말이 가장 싼 쪽
+    let best: Declaration | null = null;
+    let bestEv = -Infinity;
+    for (const t of kkangTargets(s, me)) {
+      const ev = -pieceValue(t, myAlive);
+      if (ev > bestEv) {
+        bestEv = ev;
+        best = { value: 0, from: t, branch: 0 };
+      }
+    }
+    if (best) return best;
+  }
+
+  const values = valuesForMeta(s.roll, code);
+  let best: Declaration | null = null;
+  let bestGain = -Infinity;
+  for (const from of movableFroms(s, me)) {
+    for (const branch of branchOptions(from)) {
+      for (const v of values) {
+        const cand: Declaration = { value: v, from, branch };
+        let gain = moveEvalGain(s, me, cand);
+        // 거짓이면 들켰을 때 잃을 말의 가치를 함께 본다 (어느 말을 걸지의 판단)
+        if (v !== s.roll) gain -= pieceValue(from, myAlive) * 0.25;
+        if (gain > bestGain) {
+          bestGain = gain;
+          best = cand;
+        }
+      }
+    }
+  }
+  if (best) return best;
+  // 카테고리가 비는 경우는 없지만(주사위 값별로 항상 후보가 남는다) 안전망
+  return chooseAiDeclaration(s, me);
+}
+
+// ---------- 정책 우선 선택 (게임 화면이 쓰는 진입점) ----------
+
+function samplePolicyCode(key: string, legal: MetaCode[]): MetaCode | null {
+  const entry = lookupPolicy(key);
+  if (!entry) return null;
+  const pairs = Object.entries(entry).filter(([c]) => legal.includes(c as MetaCode));
+  const total = pairs.reduce((a, [, p]) => a + p, 0);
+  if (total <= 0) return null;
+  let r = Math.random() * total;
+  for (const [c, p] of pairs) {
+    r -= p;
+    if (r <= 0) return c as MetaCode;
+  }
+  return pairs[pairs.length - 1][0] as MetaCode;
+}
+
+/** 선언 결정 — 학습된 균형 빈도 우선, 미적중이면 기존 휴리스틱 */
+export function chooseDeclaration(s: BState, me: PlayerId): Declaration {
+  if (s.turn !== me || s.phase !== 'declare') throw new Error('not AI declare');
+  const code = samplePolicyCode(declKey(s, me, canWinByDeclaring(s, me)), declMetas(s.roll));
+  if (code) return resolveDeclMeta(s, me, code);
+  return chooseAiDeclaration(s, me);
+}
+
+/** 응답 결정 — 학습된 균형 빈도 우선. s.roll은 절대 읽지 않는다 */
+export function chooseResponse(s: BState, me: PlayerId): boolean {
+  if (s.turn === me || s.phase !== 'respond' || !s.declaration) throw new Error('not AI respond');
+  const roller = s.turn;
+  const code = samplePolicyCode(respKey(s, me, declarationWins(s, roller)), ['b', 'c']);
+  if (code) return code === 'c';
+  return chooseAiResponse(s, me);
 }
