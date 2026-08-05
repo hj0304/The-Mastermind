@@ -9,25 +9,11 @@ import { SurrenderButton } from '../shared/Surrender.tsx';
 import JungleJanggiOnline from './JungleJanggiOnline.tsx';
 import OnlinePanel from '../../net/OnlinePanel.tsx';
 import type { NetRoom } from '../../net/room.ts';
+import { PIECE_GLYPH, PIECE_NAME, PiecePips } from './pieces.tsx';
 import './jungle.css';
 
 const HUMAN: PlayerId = 0;
 const AI: PlayerId = 1;
-
-const PIECE_CHAR: Record<PieceType, string> = {
-  K: '王',
-  G: '將',
-  E: '相',
-  C: '子',
-  H: '侯',
-};
-const PIECE_NAME: Record<PieceType, string> = {
-  K: '왕',
-  G: '장',
-  E: '상',
-  C: '자',
-  H: '후',
-};
 
 type Phase = 'setup' | 'playing' | 'done';
 type Selection = { kind: 'cell'; cell: number } | { kind: 'hand'; piece: PieceType } | null;
@@ -132,7 +118,7 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
       <div className="jj-root">
         <GameHeader onExit={onExit} />
         <OnlinePanel
-          gameName="밀림장기"
+          gameName="4·3체스"
           onReady={(room) => setOnline(room)}
           onCancel={() => setOnline(null)}
         />
@@ -159,12 +145,13 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
       <div className="jj-root">
         <GameHeader onExit={onExit} />
         <div className="jj-setup">
-          <h2>밀림장기</h2>
+          <h2>4·3체스</h2>
           <p className="jj-rule-summary">
-            3×4 초소형 장기. <b>왕(王)</b>은 8방향, <b>장(將)</b>은 상하좌우, <b>상(相)</b>은 대각,
-            <b> 자(子)</b>는 앞으로 한 칸 — 상대 진영에 닿으면 <b>후(侯)</b>로 승격합니다. 잡은
-            기물은 포로가 되어 빈 칸에 다시 놓을 수 있습니다(상대 진영 제외). 상대 왕을 잡거나, 내
-            왕이 상대 진영에서 한 턴을 버티면 승리!
+            세로 4 × 가로 3, 12칸의 초소형 체스. <b>킹♚</b>은 8방향, <b>나이트♞</b>는 상하좌우,
+            <b> 비숍♝</b>은 대각, <b>폰♟︎</b>은 앞으로 한 칸 — 상대 진영에 닿으면{' '}
+            <b>룩♜으로 프로모션</b>됩니다. 잡은 기물은 내 기물이 되어 빈 칸에 다시 배치할 수
+            있습니다(상대 진영 제외). 상대 킹을 잡거나, 내 킹이 상대 진영에서 한 턴을 버티면
+            승리! 나이트·룩의 이동은 체스와 다르니 <b>타일의 점</b>(실제 이동 방향)을 보세요.
           </p>
           <div className="setup-stats">
             <span className="extreme-tag">EXTREME AI</span>
@@ -231,8 +218,11 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
                 onClick={() => onCellClick(cell)}
               >
                 {piece && (
-                  <span className={`jj-piece p${piece.owner} ${piece.type === 'K' ? 'king' : ''}`}>
-                    {PIECE_CHAR[piece.type]}
+                  <span
+                    className={`jj-piece p${piece.owner} ${piece.type === 'K' ? 'king' : ''} ${piece.type === 'H' ? 'promoted' : ''}`}
+                  >
+                    <PiecePips type={piece.type} />
+                    {PIECE_GLYPH[piece.type]}
                   </span>
                 )}
               </button>
@@ -261,8 +251,8 @@ export default function JungleJanggiGame({ onExit }: { onExit: () => void }) {
                   : '패배…'}
             </h2>
             <p>
-              {state.result.reason === 'capture' && '왕이 잡혔습니다'}
-              {state.result.reason === 'territory' && '왕이 상대 진영에서 살아남았습니다'}
+              {state.result.reason === 'capture' && '킹이 잡혔습니다'}
+              {state.result.reason === 'territory' && '킹이 상대 진영에서 살아남았습니다'}
               {state.result.reason === 'repetition' && '동일 국면 3회 반복'}
             </p>
             <div className="end-actions">
@@ -305,7 +295,8 @@ function HandRow({
             onClick={() => onClick(p)}
             title={PIECE_NAME[p]}
           >
-            {PIECE_CHAR[p]}
+            <PiecePips type={p} />
+            {PIECE_GLYPH[p]}
           </button>
         ))}
       </div>
@@ -319,9 +310,9 @@ function GameHeader({ onExit, surrender = false }: { onExit: () => void; surrend
       <button className="back-btn" onClick={onExit}>
         ← 로비
       </button>
-      <span className="game-title">밀림장기</span>
+      <span className="game-title">4·3체스</span>
       {surrender && <SurrenderButton gameId="jungle-janggi" onExit={onExit} />}
-      <RuleBookButton gameId="jungle-janggi" gameName="밀림장기" className="rb-btn header-rb" />
+      <RuleBookButton gameId="jungle-janggi" gameName="4·3체스" className="rb-btn header-rb" />
     </header>
   );
 }

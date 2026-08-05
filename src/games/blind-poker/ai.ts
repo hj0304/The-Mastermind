@@ -156,6 +156,10 @@ function myCardPosterior(s: BpState, ctx: AiContext, bluffRate: number): number[
 export function chooseAiAction(s: BpState, ctx: AiContext): BpAction {
   if (s.toAct !== ctx.me || s.phase !== 'betting') throw new Error('not AI turn');
   const info = legalInfo(s);
+
+  // 블랙 핸드: 상대 카드조차 안 보인다 — s.cards를 일절 읽지 않는 별도 경로
+  if (s.isBlack) return chooseBlack(s, ctx, info);
+
   const oppCard = s.cards[1 - ctx.me]; // 상대 카드는 보인다
 
   if (ctx.difficulty === 'easy') return chooseEasy(oppCard, info);
@@ -227,6 +231,51 @@ export function chooseAiAction(s: BpState, ctx: AiContext): BpAction {
   if (jRaise >= jCall && jRaise >= jFold && bestRaise > 0) {
     return { type: 'raise', amount: bestRaise };
   }
+  if (jFold > jCall && callCost > 0) return { type: 'fold' };
+  return { type: 'call' };
+}
+
+/**
+ * 블랙 핸드 의사결정 — 양쪽 다 아무 카드도 못 보는 대칭 상황.
+ * 두 카드가 같은 잔여 분포에서 나오므로 승률은 항상 (1 − 무승부 확률)/2 ≈ 0.5.
+ * 남는 판단 축은 팟 오즈와 10 폴드 페널티 확률(카운팅 반영)뿐이다.
+ */
+function chooseBlack(s: BpState, ctx: AiContext, info: ReturnType<typeof legalInfo>): BpAction {
+  // hard: 블랙 핸드 전용 학습 정책 (키 접두 'B')
+  if (ctx.difficulty === 'hard') {
+    const entry = lookupPolicy(`B|${policyHist(s)}`);
+    if (entry) return samplePolicyAction(entry, info);
+  }
+
+  const counts = unseenCounts(s, ctx.me);
+  const total = counts.reduce((a, b) => a + b, 0);
+  let tieP = 0;
+  for (let c = 1; c <= 10; c++) {
+    if (counts[c] >= 2) tieP += (counts[c] * (counts[c] - 1)) / (total * (total - 1));
+  }
+  const winP = (1 - tieP) / 2;
+  const pTen = counts[10] / Math.max(total, 1);
+
+  const pot = potSize(s);
+  const callCost = info.callCost;
+  const evCall = winP * pot - (1 - winP - tieP) * callCost;
+  const evFold = -(pTen * 10);
+
+  // 대칭 상황이라 밸류 레이즈 근거가 없다 — 압박 블러프만 소량 섞는다
+  const { foldRate } = tendencies(loadOpponentModel());
+  const myRaises = s.actions.filter((a) => a.player === ctx.me && a.action.type === 'raise').length;
+  if (
+    ctx.difficulty !== 'easy' &&
+    myRaises === 0 &&
+    info.raiseOptions.length > 0 &&
+    Math.random() < 0.1 + 0.3 * foldRate
+  ) {
+    return { type: 'raise', amount: info.raiseOptions[0] };
+  }
+
+  const jitter = ctx.difficulty === 'hard' ? 0.2 : 0.8;
+  const jCall = evCall + (Math.random() - 0.5) * jitter;
+  const jFold = evFold + (Math.random() - 0.5) * jitter;
   if (jFold > jCall && callCost > 0) return { type: 'fold' };
   return { type: 'call' };
 }

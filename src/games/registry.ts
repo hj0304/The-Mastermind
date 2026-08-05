@@ -31,11 +31,12 @@ export interface GameMeta {
 
 export const GAMES: GameMeta[] = [
   {
+    // id는 전적·라우트 호환을 위해 유지 (표기만 4·3체스로 리테마)
     id: 'jungle-janggi',
     genre: 'board',
-    icon: '🐯',
-    name: '밀림장기',
-    tagline: '3×4 초소형 장기판, 잡은 말은 내 말이 된다',
+    icon: '♟️',
+    name: '4·3체스',
+    tagline: '12칸 초소형 체스 — 잡은 기물은 내 기물이 된다',
     solo: true, multi: true, minPlayers: 2, maxPlayers: 2,
     status: 'playable',
     origin: '동물장기(どうぶつしょうぎ) 계열 미니 장기',
